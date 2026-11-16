@@ -8,7 +8,9 @@ if (pi > 0) want = process.argv[pi + 1];
 
 const list = await (await fetch('http://127.0.0.1:9222/json')).json();
 const pages = list.filter((t) => t.type === 'page');
-const page = pages.find((t) => (t.title || '').includes(want)) || pages.find((t) => (t.title || '').includes('Mineradio pro'));
+const page = pages.find((t) => (t.title || '') === want)
+  || pages.find((t) => (t.title || '') === 'Mineradio pro')
+  || pages.find((t) => (t.title || '').includes(want));
 if (!page) {
   console.error('no page target:', pages.map((p) => p.title));
   process.exit(1);

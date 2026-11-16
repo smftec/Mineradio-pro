@@ -9,6 +9,7 @@ import { getStore } from './store.js';
 import { windows } from './windows.js';
 
 let ready = false;
+let fallbackActive = false; // 镜像轮换期间,单次失败不上报 UI
 
 // 国内镜像(代理 GitHub Releases 资产,含 latest.yml)
 const MIRRORS = ['https://ghfast.top/', 'https://gh-proxy.com/', 'https://gh.llkk.cc/'];
@@ -40,11 +41,19 @@ function stripHtml(html) {
 }
 
 function applyFeedUrl() {
-  const cfg = getStore('config').data.update;
-  if (cfg && cfg.customUrl) {
+  const cfg = getStore('config').data.update || {};
+  if (cfg.customUrl) {
     autoUpdater.setFeedURL({ provider: 'generic', url: cfg.customUrl });
+    return;
   }
-  // 否则使用打包时生成的 app-update.yml(来自 package.json build.publish)
+  if (cfg.preferredMirror) {
+    // 上次成功过的镜像:检测与下载都优先走它
+    autoUpdater.setFeedURL({ provider: 'generic', url: mirrorFeedUrl(cfg.preferredMirror) });
+    return;
+  }
+  // 显式设回 GitHub(electron-updater 一旦 setFeedURL 便不会自动回落到 app-update.yml)
+  const pub = getPublishInfo();
+  autoUpdater.setFeedURL({ provider: 'github', owner: pub.owner, repo: pub.repo });
 }
 
 function getPublishInfo() {
@@ -67,56 +76,81 @@ export function currentVersion() {
   return app.getVersion();
 }
 
+// 候选镜像顺序:auto → preferredMirror 优先,其次直连 + 其余镜像;off → 仅直连
+function buildCandidates(cfg) {
+  if (cfg.customUrl || cfg.mirror === 'off') return [null];
+  if (cfg.mirror && cfg.mirror !== 'auto' && cfg.mirror !== 'direct') {
+    return [cfg.mirror, null];
+  }
+  const rest = MIRRORS.filter((m) => m !== cfg.preferredMirror);
+  return cfg.preferredMirror ? [cfg.preferredMirror, null, ...rest] : [null, ...rest];
+}
+
+// 单次检测,网络层面成功(not-available / available 均算)即 resolve
+function checkOnce() {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const onNA = () => { if (!settled) { settled = true; cleanup(); resolve('not-available'); } };
+    const onAvail = () => { if (!settled) { settled = true; cleanup(); resolve('available'); } };
+    const onErr = (e) => { if (!settled) { settled = true; cleanup(); reject(new Error(e.message || 'check error')); } };
+    const cleanup = () => {
+      autoUpdater.removeListener('update-not-available', onNA);
+      autoUpdater.removeListener('update-available', onAvail);
+      autoUpdater.removeListener('error', onErr);
+    };
+    autoUpdater.on('update-not-available', onNA);
+    autoUpdater.on('update-available', onAvail);
+    autoUpdater.on('error', onErr);
+    autoUpdater.checkForUpdates().catch((e) => onErr(e));
+  });
+}
+
 export async function checkForUpdates(manual = false) {
   if (!ready) return;
   if (!app.isPackaged) {
     if (manual) emit('dev-mode', { message: '开发模式下自动更新不可用 — 打包安装(npm run build:win)后生效。' });
     return;
   }
+  const cfg = getStore('config').data.update || {};
+  fallbackActive = true;
   try {
-    applyFeedUrl();
-    autoUpdater.allowPrerelease = false;
-    await autoUpdater.checkForUpdates();
-  } catch (e) {
-    emit('error', { message: humanError(e), manual });
+    for (const mirror of buildCandidates(cfg)) {
+      try {
+        if (mirror) {
+          autoUpdater.setFeedURL({ provider: 'generic', url: mirrorFeedUrl(mirror) });
+          emit('progress-hint', { message: `正在通过镜像 ${new URL(mirror).hostname} 检查更新…` });
+        } else {
+          applyFeedUrl();
+        }
+        await checkOnce();
+        if (mirror && mirror !== cfg.preferredMirror) {
+          cfg.preferredMirror = mirror;
+          getStore('config').scheduleSave();
+        }
+        return; // 检测成功(available / not-available 均已通过事件上报)
+      } catch (e) {
+        console.error('[updater] check failed via', mirror || 'direct', e.message);
+      }
+    }
+    emit('error', { message: '检查更新失败:直连与镜像均不可达,请检查网络后重试。' });
+  } finally {
+    fallbackActive = false;
   }
 }
 
 // 下载:直连失败自动轮换国内镜像(auto);也尊重用户指定的镜像/自定义源
-let mirrorFallbackActive = false;
 export async function downloadUpdate() {
-  mirrorFallbackActive = true;
+  fallbackActive = true;
   try {
     return await downloadUpdateInner();
   } finally {
-    mirrorFallbackActive = false;
+    fallbackActive = false;
   }
 }
 
 async function downloadUpdateInner() {
   const cfg = getStore('config').data.update || {};
-  if (cfg.customUrl) {
-    // 自定义源:直接按其下载
-    try {
-      applyFeedUrl();
-      await downloadOnce();
-      return;
-    } catch (e) {
-      emit('error', { message: humanError(e) });
-      return;
-    }
-  }
-
-  const candidates = [];
-  if (cfg.mirror === 'off') candidates.push(null); // 仅直连
-  else if (cfg.mirror && cfg.mirror !== 'auto' && cfg.mirror !== 'direct') {
-    candidates.push(cfg.mirror); // 指定镜像优先
-    candidates.push(null); // 回退直连
-  } else {
-    // auto:记住上次成功的镜像优先,其后直连 + 其余镜像
-    if (cfg.preferredMirror) candidates.push(cfg.preferredMirror);
-    candidates.push(null, ...MIRRORS.filter((m) => m !== cfg.preferredMirror));
-  }
+  const candidates = buildCandidates(cfg);
 
   for (const mirror of candidates) {
     try {
@@ -200,8 +234,8 @@ export function initUpdater({ autoCheckDelayMs = 10_000 } = {}) {
   }));
   autoUpdater.on('update-downloaded', (info) => emit('downloaded', { version: info.version }));
   autoUpdater.on('error', (e) => {
-    // 镜像轮换期间的单次失败由 downloadOnce 消化,不上报 UI
-    if (mirrorFallbackActive) {
+    // 镜像轮换期间的单次失败由 downloadOnce/checkOnce 消化,不上报 UI
+    if (fallbackActive) {
       console.error('[updater] candidate failed:', e.message);
       return;
     }
