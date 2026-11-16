@@ -341,6 +341,18 @@ export const player = {
     this._emit('queue', {});
   },
 
+  // 队列内拖拽移动(fromId 移动到 toId 前/后),同步修正当前播放索引
+  moveInQueue(fromId, toId, below) {
+    const from = this.queue.findIndex((t) => t.id === fromId);
+    if (from < 0 || fromId === toId) return;
+    const [moved] = this.queue.splice(from, 1);
+    let idx = this.queue.findIndex((t) => t.id === toId);
+    if (idx < 0) { this.queue.splice(from, 0, moved); return; }
+    this.queue.splice(below ? idx + 1 : idx, 0, moved);
+    if (this.current) this.index = this.queue.findIndex((t) => t.id === this.current.id);
+    this._emit('queue', {});
+  },
+
   clearQueue({ keepCurrent = true } = {}) {
     if (keepCurrent && this.current) {
       this.queue = [this.current];

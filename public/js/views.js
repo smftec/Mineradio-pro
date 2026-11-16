@@ -217,6 +217,37 @@ function viewMostPlayed(root, state) {
   root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
 }
 
+// 拖拽排序通用绑定:行可拖动,drop 时回调 onMove(fromId, toId, below)
+export function bindDragReorder(root, onMove) {
+  let dragId = null;
+  root.querySelectorAll('tr[data-id]').forEach((tr) => {
+    tr.draggable = true;
+    tr.addEventListener('dragstart', (e) => {
+      dragId = tr.dataset.id;
+      tr.classList.add('drag-src');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', dragId); } catch { /* ignore */ }
+    });
+    tr.addEventListener('dragend', () => tr.classList.remove('drag-src'));
+    tr.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (tr.dataset.id === dragId) return;
+      const rect = tr.getBoundingClientRect();
+      const below = e.clientY > rect.top + rect.height / 2;
+      tr.classList.toggle('drag-over', !below);
+      tr.classList.toggle('drag-over-below', below);
+    });
+    tr.addEventListener('dragleave', () => tr.classList.remove('drag-over', 'drag-over-below'));
+    tr.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const below = tr.classList.contains('drag-over-below');
+      tr.classList.remove('drag-over', 'drag-over-below');
+      if (dragId && tr.dataset.id !== dragId) onMove(dragId, tr.dataset.id, below);
+      dragId = null;
+    });
+  });
+}
+
 function viewPlaylistDetail(root, state, plId) {
   const pl = state.playlists.find((p) => p.id === plId);
   if (!pl) { root.innerHTML = head('歌单', ''); return; }
@@ -232,6 +263,7 @@ function viewPlaylistDetail(root, state, plId) {
     </div>
     ${tracks.length ? trackTable(tracks, state.playingId) : `<div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">歌单还是空的</div><div class="empty-sub">在歌曲上右键 → 添加到歌单</div></div>`}`;
   bindTable(root, state, tracks, plId);
+  if (tracks.length > 1) bindDragReorder(root, (f, t, b) => state.reorderPlaylist(pl, f, t, b));
   bindBack(root, state);
   root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
   root.querySelector('#btn-rename-pl')?.addEventListener('click', () => state.renamePlaylist(pl));

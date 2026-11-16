@@ -23,11 +23,14 @@ export function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-export function toast(msg, ms = 2600) {
+export function toast(msg, ms = 2600, icon = null) {
   const wrap = document.getElementById('toast-wrap');
   const el = document.createElement('div');
-  el.className = 'toast';
-  el.textContent = msg;
+  el.className = 'toast' + (icon === 'success' ? ' success' : '');
+  el.innerHTML = icon
+    ? `<svg viewBox="0 0 24 24" class="ico">${icon === 'success' ? '<path d="M20 6L9 17l-5-5"/>' : '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'}</svg><span></span>`
+    : '<span></span>';
+  el.querySelector('span').textContent = msg;
   wrap.appendChild(el);
   setTimeout(() => {
     el.style.transition = 'opacity .3s';

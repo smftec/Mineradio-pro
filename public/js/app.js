@@ -1,7 +1,7 @@
 // 主窗口入口:状态 + 路由 + 播放条 + 公共交互
 import { api, appInfo, coverUrl, fmtTime, esc, toast } from './api.js';
 import { player } from './player.js';
-import { renderView, bindTable, EQ_BARS, trackTable, ACTIONS_PLAY_ALL } from './views.js';
+import { renderView, bindTable, bindDragReorder, EQ_BARS, trackTable, ACTIONS_PLAY_ALL } from './views.js';
 import { registerSpectrum } from './visualizer.js';
 import { renderSettings, renderUpdateStatus } from './settings-view.js';
 import { openLyricsView, closeLyricsView, isLyricsOpen } from './lyrics-view.js';
@@ -50,6 +50,7 @@ const state = {
       $('pb-queue').classList.remove('active');
     }
     // 页面切换过渡
+    kbdIndex = -1;
     root.classList.remove('view-anim');
     void root.offsetWidth; // 重新触发动画
     root.classList.add('view-anim');
@@ -227,8 +228,10 @@ function bindChrome() {
 
   // 搜索
   const search = $('search');
+  const searchWrap = document.querySelector('.tb-search');
   search.addEventListener('input', () => {
     const q = search.value.trim().toLowerCase();
+    searchWrap.classList.toggle('has-value', search.value.length > 0);
     if (!q) {
       state.filteredTracks = null;
       if (state.view === 'library') state.render();
@@ -247,9 +250,11 @@ function bindChrome() {
   // 供"搜索无结果"空态的清空按钮调用
   state.clearSearch = () => {
     search.value = '';
+    searchWrap.classList.remove('has-value');
     state.filteredTracks = null;
     state.render();
   };
+  $('search-clear').addEventListener('click', () => { state.clearSearch(); search.focus(); });
   window.addEventListener('keydown', (e) => {
     const tag = document.activeElement?.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
@@ -259,14 +264,19 @@ function bindChrome() {
       search.select();
       return;
     }
-    if (typing) {
-      if (e.key === 'Escape' && tag === 'INPUT') {
+    if (e.key === 'Escape') {
+      const menuOpen = !$('ctx-menu').classList.contains('hidden');
+      if (menuOpen) { $('ctx-menu').classList.add('hidden'); return; }
+      if (tag === 'INPUT') {
         search.value = '';
         search.dispatchEvent(new Event('input'));
         search.blur();
+        return;
       }
-      return;
+      if (isLyricsOpen()) { closeLyricsView(); return; }
+      if (document.querySelector('.modal-mask')) { document.querySelector('.modal-mask').remove(); return; }
     }
+    if (typing) return;
     switch (e.key) {
       case ' ':
         // 焦点在按钮上时空格本来就是点击,避免双重触发
@@ -285,14 +295,26 @@ function bindChrome() {
         break;
       case 'ArrowUp':
         e.preventDefault();
-        player.setVolume(player.volume + 0.05);
-        $('pb-volfill').style.width = player.volume * 100 + '%';
+        if (e.ctrlKey) {
+          player.setVolume(player.volume + 0.05);
+          $('pb-volfill').style.width = player.volume * 100 + '%';
+        } else {
+          kbdMove(-1);
+        }
         break;
       case 'ArrowDown':
         e.preventDefault();
-        player.setVolume(player.volume - 0.05);
-        $('pb-volfill').style.width = player.volume * 100 + '%';
+        if (e.ctrlKey) {
+          player.setVolume(player.volume - 0.05);
+          $('pb-volfill').style.width = player.volume * 100 + '%';
+        } else {
+          kbdMove(1);
+        }
         break;
+      case 'Enter': {
+        const tr = kbdPlay();
+        break;
+      }
       default:
         return;
     }
@@ -403,6 +425,22 @@ function renderNavPlaylists() {
   });
 }
 
+// ---------------- 列表键盘导航(↑↓ 移动,Enter 播放) ----------------
+let kbdIndex = -1;
+function kbdMove(dir) {
+  const rows = [...document.querySelectorAll('#view-root tr[data-id]')];
+  if (!rows.length) return;
+  if (kbdIndex < 0 || kbdIndex >= rows.length) kbdIndex = dir > 0 ? -1 : rows.length;
+  kbdIndex = Math.max(0, Math.min(rows.length - 1, kbdIndex + dir));
+  rows.forEach((r, i) => r.classList.toggle('kbd-active', i === kbdIndex));
+  rows[kbdIndex].scrollIntoView({ block: 'nearest' });
+}
+function kbdPlay() {
+  const rows = [...document.querySelectorAll('#view-root tr[data-id]')];
+  if (kbdIndex < 0 || kbdIndex >= rows.length) { kbdMove(1); return; }
+  rows[kbdIndex].click();
+}
+
 // ---------------- 播放队列视图 ----------------
 function renderQueueView(root) {
   if (!player.queue.length) {
@@ -441,6 +479,7 @@ function renderQueueView(root) {
       if (state.view === 'queue') renderQueueView(root);
     });
   });
+  if (player.queue.length > 1) bindDragReorder(root, (f, t, b) => player.moveInQueue(f, t, b));
 }
 
 // ---------------- 我喜欢的音乐 ----------------
@@ -456,27 +495,54 @@ function renderFavoritesView(root) {
     </div>`}`;
   if (tracks.length) {
     bindTable(root, state, tracks);
+    if (tracks.length > 1) bindDragReorder(root, (f, t, b) => state.reorderPlaylist(pl, f, t, b));
     root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
   }
 }
 
+// 歌单内拖拽重排
+state.reorderPlaylist = (pl, fromId, toId, below) => {
+  const arr = [...pl.trackIds];
+  const from = arr.indexOf(fromId);
+  if (from < 0 || fromId === toId) return;
+  arr.splice(from, 1);
+  const idx = arr.indexOf(toId);
+  if (idx < 0) return;
+  arr.splice(below ? idx + 1 : idx, 0, fromId);
+  pl.trackIds = arr;
+  api.invoke('pl:reorder', pl.id, arr);
+  state.render();
+};
+
 // ---------------- 右键菜单 ----------------
+const MENU_ICONS = {
+  play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/>',
+  queue: '<path d="M3 6h13M3 12h13M3 18h9"/><path d="M18 9v9M14.5 13.5h7"/>',
+  artist: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+  album: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4.5"/>',
+  playlistAdd: '<path d="M3 6h11M3 12h11M3 18h7"/><path d="M18 9v9M14.5 13.5h7"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  remove: '<path d="M6 6l12 12M18 6L6 18"/>',
+  heart: '<path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.4 4.5 6 4.5c2.2 0 3.6 1.2 6 3.8 2.4-2.6 3.8-3.8 6-3.8 3.6 0 5.6 3.9 4 7.2C19.5 16.4 12 21 12 21z"/>',
+};
+
 state.showTrackMenu = function (e, track, playlistId) {
   if (!track) return;
   const menu = $('ctx-menu');
   const items = [
-    { label: '▶ 播放', act: () => state.playFromList([track], 0) },
-    { label: '加入队列', act: () => state.enqueue(track) },
+    { label: '播放', icon: 'play', act: () => state.playFromList([track], 0) },
+    { label: '加入队列', icon: 'queue', act: () => state.enqueue(track) },
     { sep: true },
-    { label: '查看艺术家', act: () => state.navigate('artists', { value: track.albumArtist || track.artist }) },
-    { label: '查看专辑', act: () => state.navigate('albums', { value: track.album }) },
+    { label: '查看艺术家', icon: 'artist', act: () => state.navigate('artists', { value: track.albumArtist || track.artist }) },
+    { label: '查看专辑', icon: 'album', act: () => state.navigate('albums', { value: track.album }) },
     { sep: true },
   ];
   // 歌单子项
   if (state.playlists.length) {
     for (const pl of state.playlists) {
       items.push({
-        label: `＋ ${pl.name}`,
+        label: `添加到「${pl.name}」`,
+        icon: 'playlistAdd',
         act: async () => {
           await api.invoke('pl:addTracks', pl.id, [track.id]);
           await reloadPlaylists();
@@ -486,7 +552,7 @@ state.showTrackMenu = function (e, track, playlistId) {
       });
     }
   } else {
-    items.push({ label: '＋ 新建歌单并加入…', act: () => createPlaylistModal('', async () => {
+    items.push({ label: '新建歌单并加入…', icon: 'playlistAdd', act: () => createPlaylistModal('', async () => {
       const pl = state.playlists[state.playlists.length - 1];
       if (pl) { await api.invoke('pl:addTracks', pl.id, [track.id]); toast(`已添加到「${pl.name}」`); }
     }) });
@@ -494,16 +560,17 @@ state.showTrackMenu = function (e, track, playlistId) {
   if (playlistId) {
     items.push({ sep: true }, {
       label: '从歌单移除',
+      icon: 'remove',
       act: async () => {
         await api.invoke('pl:removeTrack', playlistId, track.id);
         state.render();
       },
     });
   }
-  items.push({ sep: true }, { label: '打开文件位置', act: () => api.invoke('lib:reveal', track.path) });
+  items.push({ sep: true }, { label: '打开文件位置', icon: 'folder', act: () => api.invoke('lib:reveal', track.path) });
 
   menu.innerHTML = items.map((it, i) =>
-    it.sep ? '<div class="ctx-sep"></div>' : `<div class="ctx-item" data-i="${i}">${esc(it.label)}</div>`).join('');
+    it.sep ? '<div class="ctx-sep"></div>' : `<div class="ctx-item" data-i="${i}"><svg viewBox="0 0 24 24" class="ico">${MENU_ICONS[it.icon] || ''}</svg>${esc(it.label)}</div>`).join('');
   menu.classList.remove('hidden');
   const mw = 200, mh = items.length * 30 + 20;
   menu.style.left = Math.min(e.clientX, window.innerWidth - mw - 8) + 'px';
