@@ -76,18 +76,21 @@ dist/
 └── Mineradio-pro-1.1.0-Setup.exe.blockmap  # 增量更新(发布时建议上传)
 ```
 
+**当前发布仓库:** [github.com/smftec/Mineradio-pro](https://github.com/smftec/Mineradio-pro)(公开,自动更新链路已实测打通)
+
 **发布新版流程:**
 
-1. 把 `package.json` → `build.publish` 中的占位改为自己的仓库:
-   ```json
-   "publish": { "provider": "github", "owner": "你的GitHub用户名", "repo": "Mineradio-pro" }
+1. 提升 `package.json` 的 `version`(如 `1.3.1`)
+2. `npm run build:win`
+3. 创建 Release 并上传产物:
+   ```bash
+   gh release create v1.3.1 --title "Mineradio pro v1.3.1" --notes "..."      dist/Mineradio-pro-1.3.1-Setup.exe dist/Mineradio-pro-1.3.1-Setup.exe.blockmap dist/latest.yml
    ```
-2. 提升 `package.json` 的 `version`(如 `1.1.1`)
-3. `npm run build:win`
-4. 在 GitHub 仓库创建 Release:tag 为 `v1.1.1`,上传 `dist/` 下的 `Setup.exe`、`latest.yml`、`.blockmap`
-5. 已安装用户的应用会在启动后自动检测到新版本 → 下载 → 重启安装完成升级
+4. 已安装用户的应用会在启动后自动检测 → 提示 → 下载 → 静默安装升级
 
-**不用 GitHub 的更新源:** 在应用「设置 → 软件更新 → 自定义更新源」填入任意 HTTP 目录地址(该目录下放置 `latest.yml` 与安装包),例如 OSS/CDN 镜像。留空则使用默认 GitHub Releases。「查看发布页」按钮自动读取打包配置中的仓库地址。
+**下载加速(已内置):** 直连 GitHub 下载失败时,自动轮换国内镜像(ghfast.top / gh-proxy.com / gh.llkk.cc),并记住上次成功的镜像;「设置 → 软件更新 → 下载加速」可指定策略。**自定义更新源:** 在设置中填入任意 HTTP 目录地址(放置 `latest.yml` 与安装包,如 OSS/CDN),留空则使用 GitHub。
+
+**更新链路实测记录(2026-11-17):** 安装 v1.2.9 → 启动静默检查 → 真实检测到 v1.3.0 → UI 提示(徽标/设置页/更新日志)→ 下载(直连失败自动切镜像,sha512 校验)→ 静默安装 → 成功升级至 v1.3.0,全程无需人工干预。
 
 ## 目录结构
 
