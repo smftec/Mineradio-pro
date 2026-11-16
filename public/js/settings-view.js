@@ -120,8 +120,14 @@ export function renderSettings(root, state) {
       <div class="set-row"><label>启动时自动检查</label>
         <input type="checkbox" class="switch" id="set-auto-check" ${cfg.update.autoCheck ? 'checked' : ''}>
       </div>
+      <div class="set-row"><label>下载加速</label>
+        <select id="set-mirror">
+          ${[['auto', '自动(直连失败换镜像)'], ['direct', '仅直连 GitHub'], ['https://ghfast.top/', '镜像 ghfast.top'], ['https://gh-proxy.com/', '镜像 gh-proxy.com'], ['https://gh.llkk.cc/', '镜像 gh.llkk.cc']].map(([v, n]) =>
+            `<option value="${v}" ${(cfg.update.mirror || 'auto') === v ? 'selected' : ''}>${n}</option>`).join('')}
+        </select>
+      </div>
       <div class="set-row"><label>自定义更新源</label>
-        <input type="text" class="set-input" id="set-custom-url" placeholder="留空使用 GitHub Releases;或填 https://…/latest.yml 所在目录(可配国内镜像)" value="${esc(cfg.update.customUrl)}">
+        <input type="text" class="set-input" id="set-custom-url" placeholder="留空使用 GitHub Releases;或填 https://…/latest.yml 所在目录" value="${esc(cfg.update.customUrl)}">
         <button class="btn" id="set-save-url">保存</button>
       </div>
       <div class="update-status" id="update-status"></div>
@@ -280,6 +286,10 @@ function bindSettings(root, state) {
     api.invoke('config:set', { update: { ...cfg.update, customUrl: url } });
     toast(url ? '自定义更新源已保存' : '已恢复使用默认 GitHub 更新源');
   });
+  root.querySelector('#set-mirror').addEventListener('change', (e) => {
+    api.invoke('config:set', { update: { ...cfg.update, mirror: e.target.value } });
+    toast('下载加速策略已保存');
+  });
   root.querySelector('#btn-check-update').addEventListener('click', () => state.checkUpdate());
   root.querySelector('#btn-open-releases').addEventListener('click', () => api.invoke('update:openReleases'));
 }
@@ -302,6 +312,9 @@ export function renderUpdateStatus(root, us) {
         <button class="btn primary" id="upd-download">下载更新</button>
         <button class="btn" id="upd-skip">跳过此版本</button>
       </div>`);
+      break;
+    case 'progress-hint':
+      rows.push(`<div class="val" style="color:var(--accent2)">${esc(us.message || '')}</div>`);
       break;
     case 'progress':
       rows.push(`<div class="progress-track"><div class="progress-fill" style="width:${us.percent || 0}%"></div></div>

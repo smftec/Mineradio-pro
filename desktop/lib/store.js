@@ -82,7 +82,7 @@ export function initStores() {
     mini: { onTop: true },
     favorites: [], // 收藏的曲目 id
     shortcuts: { mediaKeys: true },
-    update: { autoCheck: true, customUrl: '', skippedVersion: '' },
+    update: { autoCheck: true, customUrl: '', skippedVersion: '', mirror: 'auto', preferredMirror: '' },
   });
   stores.library = new Store('library.json', { tracks: {}, folders: [] });
   stores.playlists = new Store('playlists.json', { lists: [] });
