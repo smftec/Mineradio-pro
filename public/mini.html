@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' mpro: data:; media-src 'self' mpro:; connect-src 'self'">
+  <title>Mineradio pro — 迷你播放器</title>
+  <link rel="stylesheet" href="./css/mini.css">
+</head>
+<body>
+  <div id="mini">
+    <img id="m-cover" src="./assets/default-cover.png" draggable="false" alt="">
+    <div class="m-main">
+      <div class="m-toprow">
+        <div class="m-meta">
+          <div class="m-title" id="m-title">未在播放</div>
+          <div class="m-artist" id="m-artist">—</div>
+        </div>
+        <div class="m-top">
+          <button id="m-ontop" title="窗口置顶切换"><svg viewBox="0 0 24 24" class="ico"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2-6.3-4.5-6.3 4.5L8 13.6 2 9.2h7.6z"/></svg></button>
+          <button id="m-restore" title="还原主窗口"><svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M20 9H9"/></svg></button>
+        </div>
+      </div>
+      <div class="m-progress" id="m-progress"><div class="m-fill" id="m-fill"></div></div>
+      <div class="m-times"><span id="m-cur">0:00</span><span id="m-dur">0:00</span></div>
+      <div class="m-controls">
+        <button id="m-prev" title="上一首"><svg viewBox="0 0 24 24" class="ico"><path d="M19 20L9 12l10-8v16z"/><rect x="5" y="4" width="2" height="16" rx="1"/></svg></button>
+        <button id="m-play" title="播放/暂停">
+          <svg id="m-i-play" viewBox="0 0 24 24" class="ico"><path d="M7 4.5v15l13-7.5z"/></svg>
+          <svg id="m-i-pause" viewBox="0 0 24 24" class="ico hidden"><rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/></svg>
+        </button>
+        <button id="m-next" title="下一首"><svg viewBox="0 0 24 24" class="ico"><path d="M5 4l10 8-10 8V4z"/><rect x="17" y="4" width="2" height="16" rx="1"/></svg></button>
+        <div class="m-spacer"></div>
+        <div class="m-eq"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./js/mini.js"></script>
+</body>
+</html>

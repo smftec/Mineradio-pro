@@ -1,0 +1,314 @@
+// 视图渲染:曲库 / 分类 / 歌单
+import { api, coverUrl, fmtTime, esc, toast } from './api.js';
+
+const DEFAULT_COVER = './assets/default-cover.png';
+
+// 名称 hash → 占位渐变(0~5)
+export function phClass(name) {
+  let h = 0;
+  for (const ch of String(name || '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return 'ph-' + (h % 6);
+}
+
+// 播放中均衡器动画图标
+export const EQ_BARS = `<span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span></span>`;
+
+function trackRow(t, i, playingId) {
+  const cover = coverUrl(t) || DEFAULT_COVER;
+  const isPlaying = t.id === playingId;
+  return `<tr data-id="${t.id}" class="${isPlaying ? 'playing' : ''}">
+    <td class="t-num" data-i="${i}">${isPlaying ? EQ_BARS : i + 1}</td>
+    <td style="max-width:340px"><div class="t-title-cell">
+      <img class="t-cover" src="${cover}" loading="lazy" alt="" onerror="this.src='${DEFAULT_COVER}'">
+      <div style="min-width:0"><div class="t-title">${esc(t.title)}</div></div>
+    </div></td>
+    <td class="t-artist" data-artist="${esc(t.artist)}">${esc(t.artist)}</td>
+    <td class="t-album" data-album="${esc(t.album)}">${esc(t.album)}</td>
+    <td class="t-dur">${fmtTime(t.duration)}</td>
+    <td class="t-actions">
+      <button class="pb-iconbtn act-queue" data-id="${t.id}" title="加入队列"><svg viewBox="0 0 24 24" class="ico"><path d="M3 6h13M3 12h13M3 18h9"/><path d="M18 9v9M14.5 13.5h7"/></svg></button>
+      <button class="pb-iconbtn act-menu" data-id="${t.id}" title="更多"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/></svg></button>
+    </td>
+  </tr>`;
+}
+
+export function trackTable(tracks, playingId) {
+  if (!tracks.length) return '';
+  return `<table class="track-table"><tbody>
+    ${tracks.map((t, i) => trackRow(t, i, playingId)).join('')}
+  </tbody></table>`;
+}
+
+function card(art, isPlaceholder, name, sub, onclickAttr, withPlay) {
+  const ph = esc((name || '♪')[0].toUpperCase());
+  const phc = phClass(name);
+  const artEl = isPlaceholder
+    ? `<div class="card-art placeholder ${phc}">${ph}</div>`
+    : `<img class="card-art" src="${art}" loading="lazy" data-ph="${ph}" data-phc="${phc}">`;
+  return `<div class="card" ${onclickAttr}>
+    ${artEl}
+    ${withPlay ? `<button class="card-play" ${onclickAttr}><svg viewBox="0 0 24 24" class="ico" style="width:17px;height:17px"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/></svg></button>` : ''}
+    <div class="card-name" title="${esc(name)}">${esc(name)}</div>
+    <div class="card-sub">${esc(sub)}</div>
+  </div>`;
+}
+
+function groupCard(name, sub, artTracks, view, withPlay = true) {
+  const withArt = artTracks.find((t) => t.cover);
+  const attr = `data-nav="${view}" data-value="${esc(name)}"`;
+  return card(withArt ? coverUrl(withArt) : null, !withArt, name, sub, attr, withPlay);
+}
+
+// ---------- 各视图 ----------
+export function renderView(root, state) {
+  const { view, params } = state;
+  switch (view) {
+    case 'library': return viewLibrary(root, state, null, '全部歌曲');
+    case 'artists': return params?.value ? viewGroupDetail(root, state, 'artist', params.value) : viewGroups(root, state, 'artist', '艺术家');
+    case 'albums': return params?.value ? viewGroupDetail(root, state, 'album', params.value) : viewGroups(root, state, 'album', '专辑');
+    case 'genres': return params?.value ? viewGroupDetail(root, state, 'genre', params.value) : viewGroups(root, state, 'genre', '流派');
+    case 'years': return params?.value ? viewGroupDetail(root, state, 'year', params.value) : viewGroups(root, state, 'year', '年代');
+    case 'recent-added': return viewRecentAdded(root, state);
+    case 'recent-played': return viewRecentPlayed(root, state);
+    case 'most-played': return viewMostPlayed(root, state);
+    case 'playlist': return viewPlaylistDetail(root, state, params.id);
+    default: return viewLibrary(root, state, null, '全部歌曲');
+  }
+}
+
+function head(title, count, actions = '') {
+  return `<div class="view-head"><h1>${esc(title)}</h1><span class="count">${count}</span><div class="view-actions">${actions}</div></div>`;
+}
+
+export const ACTIONS_PLAY_ALL = `<button class="btn primary" id="btn-play-all"><svg viewBox="0 0 24 24" class="ico"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/></svg>播放全部</button>`;
+
+function viewLibrary(root, state, filterTracks, title) {
+  const filtering = state.filteredTracks !== null && state.filteredTracks !== undefined;
+  const tracks = filterTracks || sortDefault(state.filteredTracks || state.tracks);
+  if (!state.tracks.length) return renderEmptyLibrary(root, state);
+  // 搜索无结果:给出明确提示与清除入口(而非空白列表)
+  if (filtering && !tracks.length) {
+    root.innerHTML = `<div class="empty">
+      <img class="empty-art" src="./assets/empty-music.png" alt="" draggable="false">
+      <div class="empty-title">没有找到匹配的歌曲</div>
+      <div class="empty-sub">换个关键词试试,或按 Esc 清空搜索</div>
+      <div class="empty-actions"><button class="btn" id="empty-clear-search">清空搜索</button></div>
+    </div>`;
+    root.querySelector('#empty-clear-search')?.addEventListener('click', () => state.clearSearch());
+    return;
+  }
+  root.innerHTML = head(title, `${tracks.length} 首`, ACTIONS_PLAY_ALL) + trackTable(tracks, state.playingId);
+  bindTable(root, state, tracks);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
+}
+
+function sortDefault(tracks) {
+  return [...tracks].sort((a, b) =>
+    (a.albumArtist || a.artist).localeCompare(b.albumArtist || b.artist, 'zh') ||
+    (a.album || '').localeCompare(b.album || '', 'zh') ||
+    (a.trackNo || 0) - (b.trackNo || 0));
+}
+
+function renderEmptyLibrary(root, state) {
+  root.innerHTML = `<div class="empty">
+    <img class="empty-art" src="./assets/empty-music.png" alt="" draggable="false">
+    <div class="empty-title">曲库还是空的</div>
+    <div class="empty-sub">导入音乐文件夹开始使用<br>支持 MP3 / FLAC / WAV / OGG / Opus / M4A / AAC</div>
+    <div class="empty-actions">
+      <button class="btn primary" id="empty-add-folder">导入文件夹</button>
+      <button class="btn" id="empty-add-files">导入文件</button>
+    </div>
+  </div>`;
+  root.querySelector('#empty-add-folder')?.addEventListener('click', () => state.addFolderFlow());
+  root.querySelector('#empty-add-files')?.addEventListener('click', () => state.addFilesFlow());
+}
+
+function viewGroups(root, state, kind, title) {
+  const groups = new Map();
+  for (const t of state.tracks) {
+    let key;
+    if (kind === 'artist') key = t.albumArtist || t.artist || '未知艺术家';
+    else if (kind === 'album') key = t.album || '未知专辑';
+    else if (kind === 'genre') key = t.genre || '未知流派';
+    else key = t.year ? String(t.year) : '未知年代';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+  const keys = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'zh'));
+  if (!keys.length) return renderEmptyLibrary(root, state);
+  root.innerHTML = head(title, `${keys.length} 组`) +
+    `<div class="grid">${keys.map((k) => {
+      const list = groups.get(k);
+      const sub = kind === 'album'
+        ? (list[0].albumArtist || list[0].artist || '') + (list[0].year ? ` · ${list[0].year}` : '')
+        : `${list.length} 首`;
+      const navView = kind === 'artist' ? 'artists' : kind === 'album' ? 'albums' : kind === 'genre' ? 'genres' : 'years';
+      return groupCard(k, sub, sortDefault(list), navView);
+    }).join('')}</div>`;
+  bindCards(root, state);
+}
+
+function viewGroupDetail(root, state, kind, value) {
+  const tracks = state.tracks.filter((t) => {
+    if (kind === 'artist') return (t.albumArtist || t.artist || '未知艺术家') === value;
+    if (kind === 'album') return (t.album || '未知专辑') === value;
+    if (kind === 'genre') return (t.genre || '未知流派') === value;
+    return (t.year ? String(t.year) : '未知年代') === value;
+  });
+  const sorted = kind === 'album' ? sortDefault(tracks) : [...tracks].sort((a, b) => (a.album || '').localeCompare(b.album || '', 'zh') || (a.trackNo || 0) - (b.trackNo || 0));
+  const backView = kind === 'artist' ? 'artists' : kind === 'album' ? 'albums' : kind === 'genre' ? 'genres' : 'years';
+  const withArt = sorted.find((t) => t.cover);
+  root.innerHTML = `<button class="back-link" data-nav="${backView}">← 返回</button>
+    <div class="view-head">
+      <h1>${esc(value)}</h1><span class="count">${sorted.length} 首</span>
+      <div class="view-actions">${ACTIONS_PLAY_ALL}</div>
+    </div>
+    ${trackTable(sorted, state.playingId)}`;
+  bindTable(root, state, sorted);
+  bindBack(root, state);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(sorted));
+}
+
+function viewRecentAdded(root, state) {
+  const tracks = [...state.tracks].sort((a, b) => b.addedAt - a.addedAt).slice(0, 500);
+  if (!state.tracks.length) return renderEmptyLibrary(root, state);
+  root.innerHTML = head('最近添加', `${tracks.length} 首`, ACTIONS_PLAY_ALL) + trackTable(tracks, state.playingId);
+  bindTable(root, state, tracks);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
+}
+
+function viewRecentPlayed(root, state) {
+  const hist = state.stats.history || [];
+  const seen = new Set();
+  const tracks = [];
+  for (const h of hist) {
+    if (seen.has(h.id)) continue;
+    seen.add(h.id);
+    const t = state.trackById(h.id);
+    if (t) tracks.push(t);
+    if (tracks.length >= 300) break;
+  }
+  if (!tracks.length) {
+    return void (root.innerHTML = head('最近播放', '0 首') + `<div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">还没有播放记录</div><div class="empty-sub">播放的歌曲会出现在这里</div></div>`);
+  }
+  root.innerHTML = head('最近播放', `${tracks.length} 首`,
+    `${ACTIONS_PLAY_ALL}<button class="btn" id="btn-clear-history">清空记录</button>`) +
+    trackTable(tracks, state.playingId);
+  bindTable(root, state, tracks);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
+  root.querySelector('#btn-clear-history')?.addEventListener('click', async () => {
+    await api.invoke('stats:clearHistory');
+    toast('已清空最近播放记录');
+    state.reloadStats();
+  });
+}
+
+function viewMostPlayed(root, state) {
+  const entries = Object.entries(state.stats.tracks || {})
+    .filter(([, s]) => s.plays > 0)
+    .sort((a, b) => b[1].plays - a[1].plays)
+    .slice(0, 300);
+  const tracks = entries.map(([id]) => state.trackById(id)).filter(Boolean);
+  if (!tracks.length) {
+    return void (root.innerHTML = head('播放最多', '0 首') + `<div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">还没有统计数据</div><div class="empty-sub">播放次数最多的歌曲会出现在这里</div></div>`);
+  }
+  root.innerHTML = head('播放最多', `${tracks.length} 首`, ACTIONS_PLAY_ALL) + trackTable(tracks, state.playingId);
+  bindTable(root, state, tracks);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
+}
+
+function viewPlaylistDetail(root, state, plId) {
+  const pl = state.playlists.find((p) => p.id === plId);
+  if (!pl) { root.innerHTML = head('歌单', ''); return; }
+  const tracks = pl.trackIds.map((id) => state.trackById(id)).filter(Boolean);
+  root.innerHTML = `<button class="back-link" data-nav="__playlists">← 返回歌单</button>
+    <div class="view-head">
+      <h1>🎵 ${esc(pl.name)}</h1><span class="count">${tracks.length} 首</span>
+      <div class="view-actions">
+        ${ACTIONS_PLAY_ALL}
+        <button class="btn" id="btn-rename-pl">重命名</button>
+        <button class="btn danger" id="btn-del-pl">删除歌单</button>
+      </div>
+    </div>
+    ${tracks.length ? trackTable(tracks, state.playingId) : `<div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">歌单还是空的</div><div class="empty-sub">在歌曲上右键 → 添加到歌单</div></div>`}`;
+  bindTable(root, state, tracks, plId);
+  bindBack(root, state);
+  root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(tracks));
+  root.querySelector('#btn-rename-pl')?.addEventListener('click', () => state.renamePlaylist(pl));
+  root.querySelector('#btn-del-pl')?.addEventListener('click', () => state.deletePlaylist(pl));
+}
+
+// ---------- 绑定 ----------
+function bindBack(root, state) {
+  root.querySelector('.back-link')?.addEventListener('click', (e) => {
+    const nav = e.currentTarget.dataset.nav;
+    if (nav === '__playlists') state.navigate('__playlists');
+    else state.navigate(nav);
+  });
+}
+
+function bindCards(root, state) {
+  root.querySelectorAll('[data-nav]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.card-play')) return;
+      state.navigate(el.dataset.nav, { value: el.dataset.value });
+    });
+  });
+  root.querySelectorAll('.card-play').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const holder = el.closest('[data-nav]');
+      const { nav, value } = holder.dataset;
+      const kind = nav === 'artists' ? 'artist' : nav === 'albums' ? 'album' : nav === 'genres' ? 'genre' : 'year';
+      const tracks = state.tracks.filter((t) => {
+        if (kind === 'artist') return (t.albumArtist || t.artist || '未知艺术家') === value;
+        if (kind === 'album') return (t.album || '未知专辑') === value;
+        if (kind === 'genre') return (t.genre || '未知流派') === value;
+        return (t.year ? String(t.year) : '未知年代') === value;
+      });
+      state.playAll(sortDefault(tracks));
+    });
+  });
+}
+
+export function bindTable(root, state, tracks, playlistId = null) {
+  root.querySelectorAll('tr[data-id]').forEach((tr) => {
+    const id = tr.dataset.id;
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('.t-actions') || e.target.closest('.t-artist') || e.target.closest('.t-album')) return;
+      const idx = tracks.findIndex((t) => t.id === id);
+      if (idx >= 0) state.playFromList(tracks, idx);
+    });
+    tr.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      state.showTrackMenu(e, tracks.find((t) => t.id === id), playlistId);
+    });
+    tr.querySelector('.t-artist')?.addEventListener('click', () => state.navigate('artists', { value: tr.querySelector('.t-artist').dataset.artist }));
+    tr.querySelector('.t-album')?.addEventListener('click', () => state.navigate('albums', { value: tr.querySelector('.t-album').dataset.album }));
+  });
+  root.querySelectorAll('.act-queue').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const t = tracks.find((x) => x.id === btn.dataset.id);
+      if (t) state.enqueue(t);
+    });
+  });
+  root.querySelectorAll('.act-menu').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const t = tracks.find((x) => x.id === btn.dataset.id);
+      if (t) state.showTrackMenu(e, tracks.find((x) => x.id === btn.dataset.id), playlistId);
+    });
+  });
+}
+
+// 封面加载失败 → 按名称着色的占位卡(error 事件不冒泡,捕获阶段统一委托)
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (img && img.tagName === 'IMG' && img.classList.contains('card-art') && img.dataset.ph) {
+    const div = document.createElement('div');
+    div.className = 'card-art placeholder ' + (img.dataset.phc || 'ph-0');
+    div.textContent = img.dataset.ph;
+    img.replaceWith(div);
+  }
+}, true);

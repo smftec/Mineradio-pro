@@ -1,0 +1,41 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%; background: transparent; overflow: hidden;
+  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  user-select: none;
+}
+#dl-wrap {
+  height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 8px 18px; border-radius: 14px;
+  transition: background .2s, box-shadow .2s;
+}
+#dl-wrap.unlocked {
+  background: rgba(10, 12, 22, .55);
+  box-shadow: inset 0 0 0 1px rgba(124, 92, 255, .35), 0 6px 30px rgba(0, 0, 0, .3);
+  -webkit-app-region: drag;
+}
+#dl-wrap.locked { background: transparent; }
+#dl-lines { width: 100%; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.dl-line {
+  max-width: 100%;
+  font-weight: 700;
+  white-space: nowrap; overflow: visible;
+  color: #7df9ff;
+  text-shadow: 0 0 12px rgba(53, 224, 255, .55), 0 1px 3px rgba(0, 0, 0, .9), 0 0 2px #001318, 0 0 2px #001318, 0 0 2px #001318;
+  transition: color .15s;
+  line-height: 1.3;
+}
+.dl-line.sub { color: #ffffff; text-shadow: 0 0 10px rgba(124, 92, 255, .5), 0 1px 3px rgba(0, 0, 0, .9), 0 0 2px #001318, 0 0 2px #001318; }
+.dl-line.idle { color: rgba(160, 170, 200, .55); }
+.dl-line .done { color: #ffffff; }
+
+#dl-toolbar {
+  position: absolute; top: 6px; right: 10px; display: none; gap: 6px;
+  -webkit-app-region: no-drag;
+}
+#dl-wrap.unlocked #dl-toolbar { display: flex; }
+#dl-toolbar button {
+  border: 1px solid rgba(124, 92, 255, .5); background: rgba(16, 18, 34, .9); color: #cfd4e8;
+  border-radius: 7px; padding: 3px 9px; font-size: 11px; cursor: pointer;
+}
+#dl-toolbar button:hover { background: rgba(124, 92, 255, .35); color: #fff; }

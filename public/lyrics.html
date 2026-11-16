@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' mpro: data:; connect-src 'self'">
+  <title>桌面歌词</title>
+  <link rel="stylesheet" href="./css/lyrics.css">
+</head>
+<body>
+  <div id="dl-wrap" class="unlocked">
+    <div id="dl-lines">
+      <div id="dl-line1" class="dl-line"></div>
+      <div id="dl-line2" class="dl-line sub"></div>
+    </div>
+    <div id="dl-toolbar">
+      <button id="t-lock" title="锁定(鼠标穿透)">🔒 锁定</button>
+      <button id="t-bigger" title="增大字号">A+</button>
+      <button id="t-smaller" title="减小字号">A−</button>
+      <button id="t-dual" title="单双行切换">双行</button>
+      <button id="t-close" title="关闭">✕</button>
+    </div>
+  </div>
+  <script type="module" src="./js/lyrics.js"></script>
+</body>
+</html>
