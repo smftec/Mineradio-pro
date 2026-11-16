@@ -12,3 +12,6 @@ shot*.png
 # OS / editor
 Thumbs.db
 .DS_Store
+
+# Session-local files
+.zcode/
