@@ -205,17 +205,43 @@ function viewGroupDetail(root, state, kind, value) {
   });
   const sorted = kind === 'album' ? sortDefault(tracks) : [...tracks].sort((a, b) => (a.album || '').localeCompare(b.album || '', 'zh') || (a.trackNo || 0) - (b.trackNo || 0));
   const backView = kind === 'artist' ? 'artists' : kind === 'album' ? 'albums' : kind === 'genre' ? 'genres' : 'years';
+  // hero 头部(专辑/艺术家/流派/年代通用)
   const withArt = sorted.find((t) => t.cover);
-  root.innerHTML = `<button class="back-link" data-nav="${backView}">← 返回</button>
-    <div class="view-head">
-      <h1>${esc(value)}</h1><span class="count">${sorted.length} 首</span>
-      <div class="view-actions">${ACTIONS_PLAY_ALL}</div>
+  const totalSec = Math.round(sorted.reduce((a, t) => a + (t.duration || 0), 0));
+  const metaBits = [];
+  if (kind !== 'artist') {
+    const artists = [...new Set(sorted.map((t) => t.albumArtist || t.artist).filter(Boolean))];
+    metaBits.push(artists.join(' / '));
+  } else {
+    const albums = [...new Set(sorted.map((t) => t.album).filter(Boolean))];
+    if (albums.length > 1) metaBits.push(albums.length + ' 张专辑');
+  }
+  metaBits.push(sorted.length + ' 首');
+  if (totalSec > 0) metaBits.push('总时长 ' + fmtTime(totalSec));
+  const heroLabel = { artist: '艺术家', album: '专辑', genre: '流派', year: '年代' }[kind] || '';
+  root.innerHTML = `<button class="back-link" data-nav="${backView}">← 返回${heroLabel}</button>
+    <div class="detail-hero">
+      <div class="dh-art ${withArt ? '' : phClass(value)}">${withArt
+        ? `<img src="${coverUrl(withArt)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'dh-art-fallback',textContent:'♪'}))">`
+        : esc((value || '♪')[0].toUpperCase())}</div>
+      <div class="dh-meta">
+        <div class="dh-kind">${heroLabel}</div>
+        <h1 class="dh-title">${esc(value)}</h1>
+        <div class="dh-sub">${esc(metaBits.join(' · '))}</div>
+        <div class="dh-actions">
+          <button class="btn primary" id="btn-play-all"><svg viewBox="0 0 24 24" class="ico"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/></svg>播放全部</button>
+          <button class="btn" id="btn-shuffle-all"><svg viewBox="0 0 24 24" class="ico"><path d="M16 3h5v5M21 3l-7.5 7.5M8 21H3v-5M3 21l7.5-7.5M16 21h5v-5M21 21l-6-6M3 3l6 6"/></svg>随机播放</button>
+        </div>
+      </div>
     </div>
     ${trackTable(sorted, state.playingId)}`;
   bindTable(root, state, sorted);
   setupIncrementalList(root, state, sorted);
   bindBack(root, state);
   root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(sorted));
+  root.querySelector('#btn-shuffle-all')?.addEventListener('click', () => {
+    if (sorted.length) state.playFromList(sorted, Math.floor(Math.random() * sorted.length));
+  });
 }
 
 function viewRecentAdded(root, state) {

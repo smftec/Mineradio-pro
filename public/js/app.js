@@ -1,5 +1,5 @@
 // 主窗口入口:状态 + 路由 + 播放条 + 公共交互
-import { api, appInfo, coverUrl, fmtTime, esc, toast } from './api.js';
+import { api, appInfo, coverUrl, thumbUrl, fmtTime, esc, toast } from './api.js';
 import { player } from './player.js';
 import { renderView, renderHome, renderRecordWall, bindTable, bindDragReorder, EQ_BARS, trackTable, ACTIONS_PLAY_ALL } from './views.js';
 import { setVisualParams } from './visual-modes.js';
@@ -108,7 +108,7 @@ function updatePlaybarTrack(t) {
   $('pb-artist').textContent = t ? `${t.artist}${t.album ? ' · ' + t.album : ''}` : '—';
   $('pb-cover').src = coverUrl(t) || './assets/default-cover.png';
   // 同步"喜欢"按钮状态
-  const isFav = !!t && (state.config.favorites || []).includes(t.id);
+  const isFav = !!t && !!state.config && (state.config.favorites || []).includes(t.id);
   const favBtn = $('pb-fav');
   favBtn.classList.toggle('active', isFav);
   favBtn.style.color = isFav ? 'var(--danger)' : '';
@@ -613,18 +613,26 @@ function renderQueueView(root) {
       <div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">队列是空的</div><div class="empty-sub">播放歌曲,或在歌曲上右键「加入队列」</div></div>`;
     return;
   }
-  root.innerHTML = `<div class="view-head"><h1>播放队列</h1><span class="count">${player.queue.length} 首</span>
-    <div class="view-actions"><button class="btn" id="q-clear">清空(保留当前)</button></div></div>
-    <table class="track-table"><tbody>
-      ${player.queue.map((t, i) => `<tr data-id="${t.id}" class="${t.id === state.playingId ? 'playing' : ''}">
-        <td class="t-num">${i + 1}</td>
+  const curIdx = player.queue.findIndex((t) => t.id === state.playingId);
+  const nowT = curIdx >= 0 ? player.queue[curIdx] : null;
+  const upcoming = player.queue.map((t, i) => ({ t, i })).filter(({ i }) => i !== curIdx);
+  const qRow = ({ t, i }, isNow) => `<tr data-id="${t.id}" class="${isNow ? 'playing' : ''}">
+        <td class="t-num">${isNow ? EQ_BARS : i + 1}</td>
         <td style="max-width:340px"><div class="t-title-cell">
+          <img class="t-cover" src="${thumbUrl(t) || './assets/default-cover.png'}" loading="lazy" alt="" onerror="this.src='./assets/default-cover.png'">
           <div style="min-width:0"><div class="t-title">${esc(t.title)}</div></div>
         </div></td>
         <td class="t-artist">${esc(t.artist)}</td>
         <td class="t-dur">${fmtTime(t.duration)}</td>
         <td class="t-actions"><button class="pb-iconbtn q-rm" data-i="${i}" title="从队列移除">✕</button></td>
-      </tr>`).join('')}
+      </tr>`;
+  root.innerHTML = `<div class="view-head"><h1>播放队列</h1><span class="count">${player.queue.length} 首</span>
+    <div class="view-actions"><button class="btn" id="q-clear">清空(保留当前)</button></div></div>
+    ${nowT ? `<div class="q-now-label">现在播放</div>
+    <table class="track-table"><tbody>${qRow({ t: nowT, i: curIdx }, true)}</tbody></table>
+    <div class="q-now-label next">接下来</div>` : ''}
+    <table class="track-table"><tbody>
+      ${upcoming.map(({ t, i }) => qRow({ t, i }, false)).join('')}
     </tbody></table>`;
   root.querySelector('#q-clear')?.addEventListener('click', () => {
     player.clearQueue({ keepCurrent: true });
@@ -918,7 +926,6 @@ async function boot() {
   bindPlayerCommands();
   bindUpdateEvents();
   bindWallpaperState();
-  bindFoliaSwitch();
 
   // 加载配置
   state.config = await api.invoke('config:get');
