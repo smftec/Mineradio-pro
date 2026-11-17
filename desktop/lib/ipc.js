@@ -14,6 +14,7 @@ import * as updater from './updater.js';
 import { applyMediaKeys } from './shortcuts.js';
 import * as translation from './translation.js';
 import { detectFfmpeg, resetFfmpegCache } from './audio/transcode.js';
+import * as weBridge from './we-bridge.js';
 import { writeFileSync } from 'node:fs';
 import * as backup from './backup.js';
 import {
@@ -140,6 +141,9 @@ export function registerIpc() {
   });
   ipcMain.handle('wallpaper:isMounted', () => isMounted());
   ipcMain.handle('wallpaper:diag', () => diagWindows());
+  ipcMain.handle('we:detect', () => weBridge.detectWallpaperEngine());
+  ipcMain.handle('we:export', (_e, mode, params) => weBridge.exportToWallpaperEngine(mode, params || {}));
+  ipcMain.handle('we:openProjects', () => weBridge.openWallpaperEngineProjects());
   ipcMain.on('player:command', (e, cmd, arg) => {
     broadcastExcept(e.sender, 'player:command', { cmd, arg });
   });
@@ -205,6 +209,31 @@ export function registerIpc() {
   });
 
   // ---- 备份 / 恢复 ----
+  ipcMain.handle('preset:save', async (_e, payload, defaultName) => {
+    const r = await dialog.showSaveDialog(windows.main, {
+      title: '导出视觉预设',
+      defaultPath: defaultName || 'mineradio-preset.json',
+      filters: [{ name: 'Mineradio 视觉预设', extensions: ['json'] }],
+    });
+    if (r.canceled || !r.filePath) return { ok: false, reason: 'canceled' };
+    writeFileSync(r.filePath, payload);
+    return { ok: true, path: r.filePath };
+  });
+  ipcMain.handle('preset:load', async () => {
+    const r = await dialog.showOpenDialog(windows.main, {
+      title: '导入视觉预设',
+      filters: [{ name: 'Mineradio 视觉预设', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+    if (r.canceled || !r.filePaths.length) return { ok: false, reason: 'canceled' };
+    try {
+      const data = JSON.parse(readFileSync(r.filePaths[0], 'utf-8'));
+      if (data.app !== 'mineradio-pro-visual-preset') return { ok: false, reason: '不是有效的视觉预设文件' };
+      return { ok: true, preset: data.preset };
+    } catch (e) {
+      return { ok: false, reason: e.message };
+    }
+  });
   ipcMain.handle('export:saveVideo', (_e, base64, filename) => {
     try {
       const safe = String(filename).replace(/[\\/:*?"<>|]/g, '_');

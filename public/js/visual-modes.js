@@ -15,7 +15,15 @@ function probeGL() {
 }
 
 // 统一注册:shader id 走 WebGL,canvas2d 模式走原绘制器
-export function registerVisual(canvas, { mode = 'particles' } = {}) {
+// 支持视觉参数(Folia 预设):registerVisual(canvas, { mode, params });全局调制 setVisualParams
+let _activeParams = { intensity: 1, speed: 1 };
+export function setVisualParams(params) {
+  if (params) _activeParams = { ..._activeParams, ...params };
+}
+export function getVisualParams() { return _activeParams; }
+window.__applyVisualParams = (p) => setVisualParams(p);
+export function registerVisual(canvas, { mode = 'particles', params = null } = {}) {
+  if (params) setVisualParams(params);
   if (SHADER_IDS.includes(mode) && probeGL() === 'yes') {
     const engine = new ShaderEngine(canvas);
     if (engine.ok && engine.use(mode)) { engine.active = true; return attachEngine(engine); }
@@ -39,13 +47,14 @@ function accentColors() {
   return { a, b, accent: `rgb(${a})`, accent2: `rgb(${b})` };
 }
 
-// 频谱能量摘要(低/中/高频均值 0~1)
+// 频谱能量摘要(低/中/高频均值 0~1;视觉强度调制)
 function bands(spec) {
   const n = spec.length;
+  const I = _activeParams.intensity || 1;
   const seg = (a, b) => {
     let s = 0;
     for (let i = a; i < b; i++) s += spec[i];
-    return s / (b - a) / 255;
+    return Math.min(1, (s / (b - a) / 255) * I);
   };
   return { low: seg(0, n * 0.15), mid: seg(n * 0.15, n * 0.5), high: seg(n * 0.5, n * 0.8), all: seg(0, n * 0.8) };
 }
