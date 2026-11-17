@@ -70,16 +70,21 @@ export function createMainWindow() {
   return win;
 }
 
+const MINI_FULL = { width: 440, height: 164 };
+const MINI_COLLAPSED = { width: 76, height: 76 };
+
 export function createMiniWindow() {
   if (windows.mini && !windows.mini.isDestroyed()) {
     windows.mini.show();
     return windows.mini;
   }
   const cfg = getStore('config').data;
+  const collapsed = !!cfg.mini?.collapsed;
+  const size = collapsed ? MINI_COLLAPSED : MINI_FULL;
   const opts = {
-    width: 440, height: 164,
+    width: size.width, height: size.height,
     frame: false, resizable: false,
-    alwaysOnTop: !!cfg.mini?.onTop,
+    alwaysOnTop: !!cfg.mini?.onTop || collapsed,
     // 主窗隐藏时用户需要能从任务栏找回,不能跳过任务栏
     skipTaskbar: false,
     backgroundColor: '#101322',
@@ -106,6 +111,22 @@ export function createMiniWindow() {
   win.on('closed', () => { windows.mini = null; });
   windows.mini = win;
   return win;
+}
+
+// 悬浮封面模式:收起为 76x76 可拖动封面,双击展开
+export function setMiniCollapsed(collapsed) {
+  const win = windows.mini;
+  if (!win || win.isDestroyed()) return;
+  const cfgStore = getStore('config');
+  cfgStore.data.mini.collapsed = !!collapsed;
+  cfgStore.scheduleSave();
+  const keep = win.getPosition(); // 保持左上角位置
+  const size = collapsed ? MINI_COLLAPSED : MINI_FULL;
+  win.setMinimumSize(collapsed ? 76 : 320, collapsed ? 76 : 140);
+  win.setSize(size.width, size.height);
+  win.setPosition(keep[0], keep[1]);
+  win.setAlwaysOnTop(!!cfgStore.data.mini.onTop || collapsed);
+  win.webContents.send('mini:collapsed', !!collapsed);
 }
 
 export function createDesktopLyricsWindow() {

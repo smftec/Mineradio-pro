@@ -14,7 +14,7 @@ import { applyMediaKeys } from './shortcuts.js';
 import * as backup from './backup.js';
 import {
   createMainWindow, createMiniWindow, closeMiniWindow,
-  createDesktopLyricsWindow, closeDesktopLyricsWindow, windows,
+  createDesktopLyricsWindow, closeDesktopLyricsWindow, windows, setMiniCollapsed,
 } from './windows.js';
 
 // 读取打包配置中的发布仓库信息(打包后 package.json 在 asar 内,fs 可直接读)
@@ -75,6 +75,8 @@ export function registerIpc() {
     closeMiniWindow();
     createMainWindow();
   });
+  ipcMain.on('mini:collapse', () => setMiniCollapsed(true));
+  ipcMain.on('mini:expand', () => setMiniCollapsed(false));
 
   // ---- 曲库 ----
   ipcMain.handle('lib:pickFolder', async () => {

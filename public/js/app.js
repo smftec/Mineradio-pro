@@ -668,6 +668,13 @@ state.applyTheme = async function (theme) {
   await api.invoke('config:set', { theme });
 };
 
+state.applyAccent = async function (accent) {
+  state.config.accentColor = accent;
+  if (accent === 'galaxy') delete document.documentElement.dataset.accent;
+  else document.documentElement.dataset.accent = accent;
+  await api.invoke('config:set', { accentColor: accent });
+};
+
 // ---------------- 桌面歌词徽标 ----------------
 state.updateDlBadge = function (on) {
   const el = $('dl-state');
@@ -758,6 +765,9 @@ async function boot() {
   // 加载配置
   state.config = await api.invoke('config:get');
   document.documentElement.dataset.theme = state.config.theme || 'dark';
+  if (state.config.accentColor && state.config.accentColor !== 'galaxy') {
+    document.documentElement.dataset.accent = state.config.accentColor;
+  }
   player.volume = state.config.volume ?? 0.8;
   player.crossfade = state.config.crossfade || 0;
   player.repeat = state.config.repeat || 'off';

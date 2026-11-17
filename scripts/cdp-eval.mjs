@@ -18,8 +18,8 @@ for (let i = 2; i < process.argv.length; i++) {
 const list = await (await fetch('http://127.0.0.1:9222/json')).json();
 const pages = list.filter((t) => t.type === 'page');
 const page = pages.find((t) => (t.title || '') === want)
-  || pages.find((t) => (t.title || '') === 'Mineradio pro')
   || pages.find((t) => (t.title || '').includes(want))
+  || pages.find((t) => (t.title || '') === 'Mineradio pro')
   || pages[0];
 if (!page) {
   console.error('no page target. targets:', pages.map((p) => p.title));

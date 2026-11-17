@@ -68,12 +68,15 @@ const view = {
       return;
     }
     box.innerHTML = this.lines.map((l, i) => {
+      // 行间 3D 漂浮错落偏移(伪随机,基于行索引)
+      const bx = ((i * 37) % 5 - 2) * 5;
+      const style = ` style="--bx:${bx}px"`;
       if (l.words && l.words.length) {
-        return `<div class="lv-line" data-i="${i}" data-time="${l.time}">${
+        return `<div class="lv-line"${style} data-i="${i}" data-time="${l.time}">${
           l.words.map((w) => `<span class="word" data-t0="${w.t0}" data-t1="${w.t1}">${esc(w.text)}</span>`).join('')
         }</div>`;
       }
-      return `<div class="lv-line" data-i="${i}" data-time="${l.time}">${esc(l.text || '♪')}</div>`;
+      return `<div class="lv-line"${style} data-i="${i}" data-time="${l.time}">${esc(l.text || '♪')}</div>`;
     }).join('');
     box.querySelectorAll('.lv-line[data-time]').forEach((lineEl) => {
       lineEl.addEventListener('click', () => {

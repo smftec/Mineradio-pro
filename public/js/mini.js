@@ -43,6 +43,13 @@ $('m-play').addEventListener('click', () => api.send('player:command', 'toggle')
 $('m-next').addEventListener('click', () => api.send('player:command', 'next'));
 $('m-prev').addEventListener('click', () => api.send('player:command', 'prev'));
 $('m-restore').addEventListener('click', () => api.send('mini:restore'));
+$('m-collapse').addEventListener('click', () => api.send('mini:collapse'));
+// 悬浮封面双击展开
+$('m-cover').addEventListener('dblclick', () => api.send('mini:expand'));
+// 接收主进程的收起/展开广播,同步 UI
+api.on('mini:collapsed', (on) => {
+  document.getElementById('mini').classList.toggle('collapsed', !!on);
+});
 $('m-progress').addEventListener('click', (e) => {
   if (!latest?.duration) return;
   const rect = e.currentTarget.getBoundingClientRect();
@@ -55,6 +62,10 @@ let onTop = true;
 api.invoke('config:get').then((cfg) => {
   onTop = !!cfg.mini?.onTop;
   $('m-ontop').classList.toggle('active', onTop);
+  // 恢复悬浮封面状态
+  if (cfg.mini?.collapsed) {
+    document.getElementById('mini').classList.add('collapsed');
+  }
 });
 $('m-ontop').addEventListener('click', () => {
   onTop = !onTop;

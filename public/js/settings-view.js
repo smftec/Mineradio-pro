@@ -25,6 +25,13 @@ export function renderSettings(root, state) {
           <option value="light" ${cfg.theme === 'light' ? 'selected' : ''}>浅色</option>
         </select>
       </div>
+      <div class="set-row"><label>主题色</label>
+        <select id="set-accent">
+          ${[['galaxy', '星河紫(默认)'], ['deep-sea', '深海青'], ['ember', '落日余烬'], ['forest', '森野绿'], ['sakura', '樱粉'], ['graphite', '石墨银'], ['midnight', '午夜靛蓝']].map(([v, n]) =>
+            `<option value="${v}" ${(cfg.accentColor || 'galaxy') === v ? 'selected' : ''}>${n}</option>`).join('')}
+        </select>
+        <span class="val">全站强调色即时切换</span>
+      </div>
     </div>
 
     <div class="set-group">
@@ -154,6 +161,9 @@ function bindSettings(root, state) {
 
   root.querySelector('#set-theme').addEventListener('change', (e) => {
     state.applyTheme(e.target.value);
+  });
+  root.querySelector('#set-accent').addEventListener('change', (e) => {
+    state.applyAccent(e.target.value);
   });
 
   root.querySelector('#set-crossfade').addEventListener('input', (e) => {
