@@ -6,6 +6,7 @@
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' mpro: data:; media-src 'self' mpro:; connect-src 'self'">
   <title>Mineradio pro</title>
   <link rel="stylesheet" href="./css/app.css">
+  <link rel="stylesheet" href="./folia-host.css">
 </head>
 <body>
   <div id="app">
@@ -21,7 +22,10 @@
         <button id="search-clear" class="search-clear" title="清空搜索" tabindex="-1">✕</button>
       </div>
       <div class="tb-actions">
-        <button id="btn-update-badge" class="tb-btn update-badge hidden" title="发现新版本" aria-label="软件更新">
+        <button id="btn-folia-switch" class="tb-btn" title="切换 Folia 界面" aria-label="切换 Folia 界面" data-folia-switch>
+          <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v18M5 7l7-5 7 5M5 17l7 5 7-5" opacity=".55"/><circle cx="12" cy="12" r="3.4"/></svg>
+        </button>
+                <button id="btn-update-badge" class="tb-btn update-badge hidden" title="发现新版本" aria-label="软件更新">
           <svg class="update-ring-svg" viewBox="0 0 34 34">
             <circle class="ring-base" cx="17" cy="17" r="15"/>
             <circle class="ring-dash" cx="17" cy="17" r="15"/>
@@ -144,6 +148,8 @@
       </div>
     </footer>
 
+    <div id="folia-interface" hidden aria-hidden="true"></div>
+    <div id="folia-load-status" style="display:none"></div>
     <div id="toast-wrap"></div>
     <div id="ctx-menu" class="ctx-menu hidden"></div>
   </div>
@@ -154,5 +160,7 @@
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/visualizer.js"></script>
   <script type="module" src="./js/export-video.js"></script>
+  <script src="./folia-adapter.js"></script>
+  <script src="./folia-host.js"></script>
 </body>
 </html>

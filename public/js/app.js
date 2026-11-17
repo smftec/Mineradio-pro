@@ -953,6 +953,19 @@ async function boot() {
   state.navigate('home');
   registerSpectrum(document.getElementById('pb-spectrum'), { bars: 22 });
 
+  // Folia 宿主桥(适配器在此拿到播放器/状态引用)
+  window.__setFoliaBridge({
+    player, state,
+    addFolderFlow: state.addFolderFlow,
+  });
+  // Folia 偏好:恢复上次界面选择
+  try {
+    const lastMode = localStorage.getItem('mineradio-player-interface-v1');
+    if (lastMode === 'folia' && window.MineradioFoliaHost) {
+      setTimeout(() => window.MineradioFoliaHost.setInterface('folia'), 600);
+    }
+  } catch { /* ignore */ }
+
   // 周期保存
   player.startProgressSaver();
   player.startSessionSaver();

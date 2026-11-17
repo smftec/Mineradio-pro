@@ -49,7 +49,7 @@ if (!gotLock) {
         windows.main.show();
         windows.main.focus();
       } else {
-        createMainWindow();
+        createMainWindow().catch(() => {});
       }
     });
   });
@@ -58,6 +58,12 @@ if (!gotLock) {
     console.log('[boot] ready, registering protocol…');
     try {
       registerProtocolHandler();
+    // 本地 HTTP 服务(Folia 同源 iframe 集成)
+    try {
+      const { startServer } = await import('./lib/server.js');
+      await startServer(join(__dirname, '..', 'public'));
+      console.log('[boot] server started');
+    } catch (e) { console.error('[boot] server failed:', e.message); }
       console.log('[boot] stores…');
       initStores();
       console.log('[boot] ipc…');
@@ -65,7 +71,7 @@ if (!gotLock) {
       console.log('[boot] library…');
       await initLibrary(); // 加载已有索引 + 恢复文件夹监控
       console.log('[boot] window…');
-      createMainWindow();
+      await createMainWindow();
       // 测试钩子:MPRO_IMPORT=<文件夹> 启动后自动导入并播放(仅开发验证用)
       if (process.env.MPRO_IMPORT) {
         const folder = process.env.MPRO_IMPORT;

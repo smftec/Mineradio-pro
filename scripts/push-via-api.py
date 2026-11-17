@@ -45,7 +45,7 @@ uploaded = 0
 for path in files:
     if not path.strip():
         continue
-    sha = git('hash-object', path).strip()
+    sha = git('hash-object', '--no-filters', path).strip()  # 原始内容(与上传的原始字节一致)
     if remote_map.get(path) == sha:
         entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': sha})
         continue

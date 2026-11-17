@@ -1,0 +1,34 @@
+{
+  "project": "Folia",
+  "repository": "https://github.com/chthollyphile/folia-major",
+  "version": "0.7.16",
+  "observedMainCommit": "d824c0b854e54d5411cb072092999823e9bd7071",
+  "retrievedAt": "2026-10-10",
+  "license": "AGPL-3.0",
+  "integration": "Local playback interface with original lyric effects, Polaroid and Lattice views; playback, library and playlists are owned by Mineradio through the local frame bridge.",
+  "featureSync": {
+    "retrievedAt": "2026-11-02",
+    "commit": "20c3ecd09a518e9c8d2d53c331c54a548bf9eebf",
+    "version": "0.7.25",
+    "scope": "Selective port: Hanabi, Nebbia including performance patches, Machi, subtitle row layout, Lattice harmony, random styles and live previews. Existing embedded local-player boundaries are retained."
+  },
+  "incrementalSync": {
+    "retrievedAt": "2026-11-03",
+    "channel": "development",
+    "baseCommit": "20c3ecd09a518e9c8d2d53c331c54a548bf9eebf",
+    "commit": "52617a26736578cc9731cb4e49b96d3ccd93424c",
+    "sourceCommits": [
+      "3b4f01a701f62aaf08a17da77b3b7588279d24d2",
+      "c56bf8eca8ff2aad76ac31f5e13249135f3d53d0",
+      "3dfff423efde882d44e0673b1acbd4eb995ccf2d",
+      "3f1356615f3f9bc0d539682f35f343fbbde6d403",
+      "d44eb2f3888305b1a6a9420b76d1a2b2c16dadaf",
+      "f03e8ecad21af765976cd00c5802218cdb22c8e4",
+      "b9f9d80ece6480170a8b9e9c5d051a4b8787176a",
+      "fa927fd7b3909e2fbb5c16d06fb4e31b1866078a",
+      "f95effba485b07fce1ed0a79e987c803cffb9807",
+      "52617a26736578cc9731cb4e49b96d3ccd93424c"
+    ],
+    "scope": "Selective follow-up port: staged/asynchronous Machi program warmup, global lyric rendering quality and per-style overrides, Nebbia preview sizing, whitespace/RTL lyric layout, Nebbia aquarium/rain/dew and transparent player integration. Not a full upstream version upgrade. Selective follow-up: Classic/Partita overlap geometry and local Lattice current-song-only numeric badges. Shared GlowWord/timing/layout helpers extracted as required by the overlap implementation. No Bravais, account, cloud sync or provider application port. Local command search, configurable playback slots and subtitle tools follow PR #1014 using an isolated local registry and the existing host bridge. Audio effects/output are exposed from Mineradio without adopting upstream audio services."
+  }
+}

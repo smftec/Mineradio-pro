@@ -4,6 +4,14 @@
 
 ## 更新日志
 
+### v2.7.0(⭐ 完整引入原版 Folia 界面与全部着色器效果)
+- **完整引入原版 Folia**(chthollyphile/folia-major 0.7.16 构建产物,AGPL-3.0):
+  全套 Web UI(歌词/唱片墙/封面拼贴视图 + 全部着色器级视觉效果)+ 原版宿主桥接(folia-host)
+- 标题栏一键切换 **Mineradio ↔ Folia 界面**,播放不中断;Folia 内的播放控制/队列/歌单/收藏**双向生效**
+- 实时数据桥:播放状态/进度/频谱(30fps)/歌词(逐字+时间)/封面经 RPC 推送,Folia 视觉器跟随播放
+- 架构:新增本地 HTTP 服务(127.0.0.1 随机端口)承载同源 iframe 集成(原版同款方案)
+- 许可合规:Folia 组件按 **AGPL-3.0** 随包携带 LICENSE 与 THIRD-PARTY-LICENSES.txt(与原版一致);本应用自身代码仍为 MIT
+
 ### v2.6.0(Folia 预设系统 + Wallpaper Engine 联动)
 - 新增:**着色器视觉参数系统** — 强度/速度滑块实时调制(不改 GLSL,JS 侧 uniform 能量缩放与时间缩放)
 - 新增:**视觉预设系统** — 保存/应用/删除/导出/导入 JSON 预设(效果+参数),设置页管理
@@ -202,6 +210,12 @@ dist/
 - 全局鼠标侧键热键(原版 uiohook-napi 原生模块)暂未集成
 - Folia 视觉视图(唱片墙/拼贴墙/17 种歌词效果)暂未集成
 - 项目路径建议放在本地 NTFS 盘;网络/虚拟盘上 Windows 沙箱进程无法运行 Electron
+
+## 许可
+
+- 本应用自身代码:MIT
+- `public/vendor/folia/` 内的 Folia 界面组件:[folia-major](https://github.com/chthollyphile/folia-major) **AGPL-3.0**,许可全文与第三方依赖清单随包携带(`public/vendor/folia/LICENSE`、`THIRD-PARTY-LICENSES.txt`)
+- `desktop/lib/audio/`:APE 转码调用外部 ffmpeg(LGPL),未捆绑其可执行文件
 
 ## 免责声明
 

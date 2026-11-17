@@ -48,7 +48,7 @@ function forwardConsole(win) {
   });
 }
 
-export function createMainWindow() {
+export async function createMainWindow() {
   if (windows.main && !windows.main.isDestroyed()) {
     windows.main.show();
     return windows.main;
@@ -62,7 +62,14 @@ export function createMainWindow() {
     title: 'Mineradio pro',
     webPreferences: { ...winOpts.webPreferences },
   });
-  win.loadFile(join(__dirname, '..', '..', 'public', 'index.html'));
+  // 主窗经本地 HTTP 服务加载(Folia 同源 iframe 集成前提);服务未就绪时回退 loadFile
+  let loaded = false;
+  try {
+    const { getServerOrigin } = await import('./server.js');
+    const origin = getServerOrigin();
+    if (origin) { await win.loadURL(origin + '/index.html'); loaded = true; }
+  } catch { /* fallback below */ }
+  if (!loaded) win.loadFile(join(__dirname, '..', '..', 'public', 'index.html'));
   forwardConsole(win);
   win.once('ready-to-show', () => win.show());
   win.on('maximize', () => win.webContents.send('win:maximized', true));
