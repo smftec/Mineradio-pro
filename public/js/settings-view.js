@@ -15,7 +15,9 @@ const EQ_PRESETS = {
 export function renderSettings(root, state) {
   const cfg = state.config;
   const folders = state.libraryFolders;
-  root.innerHTML = `<div class="settings">
+  root.innerHTML = `<div class="settings" style="position:relative">
+    <aside class="settings-nav" id="settings-nav"></aside>
+    <div class="settings-body">
     <h1>设置</h1>
 
     <div class="set-group">
@@ -235,10 +237,12 @@ export function renderSettings(root, state) {
       <div class="set-row"><label>Mineradio pro</label><span class="val">版本 ${esc(appInfo.version)} ${appInfo.packaged ? '' : '(开发模式)'}</span></div>
       <div class="set-row"><label>说明</label><span class="val">本地音乐播放器 · 纯本地播放,不上传任何数据 · 支持软件检测与自动更新</span></div>
     </div>
+    </div>
   </div>`;
 
   bindSettings(root, state);
   renderUpdateStatus(root, state.updateState);
+  buildSettingsNav(root);
 }
 
 // ---------- 绑定 ----------
@@ -612,3 +616,33 @@ export function renderUpdateStatus(root, us) {
 
 function fmtMB(b) { return b ? (b / 1024 / 1024).toFixed(1) + ' MB' : '—'; }
 function fmtSpeed(b) { return b ? (b / 1024 / 1024).toFixed(1) + ' MB/s' : ''; }
+
+// ---------- 设置页分组导航(sticky 锚点 + scroll-spy) ----------
+function buildSettingsNav(root) {
+  const groups = [...root.querySelectorAll('.set-group')];
+  const nav = root.querySelector('#settings-nav');
+  if (!nav || groups.length < 2) { if (nav) nav.style.display = 'none'; return; }
+  groups.forEach((g, i) => {
+    if (!g.id) g.id = 'sg-' + i;
+    g.dataset.navName = (g.querySelector('h3')?.textContent || ('组 ' + (i + 1))).replace('⭐ ', '').trim();
+  });
+  nav.innerHTML = groups.map((g) => `<a class="sn-item" href="#${g.id}" data-for="${g.id}">${esc(g.dataset.navName)}</a>`).join('');
+  nav.querySelectorAll('.sn-item').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = root.querySelector('#' + CSS.escape(a.dataset.for));
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  // scroll-spy
+  const content = document.getElementById('content');
+  const spy = () => {
+    let current = groups[0];
+    for (const g of groups) {
+      if (g.getBoundingClientRect().top <= 120) current = g;
+    }
+    nav.querySelectorAll('.sn-item').forEach((a) => a.classList.toggle('active', a.dataset.for === current.id));
+  };
+  content.addEventListener('scroll', spy, { passive: true });
+  spy();
+}

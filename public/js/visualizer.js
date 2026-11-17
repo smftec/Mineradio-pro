@@ -26,6 +26,7 @@ function frame() {
   const spec = player.getSpectrum();
   for (const r of registries) {
     if (r.canvas.id === 'pb-spectrum' && window.__lyricsOverlay) continue;
+    if (window.__suspendHomeVisual && r.canvas.id === 'home-spectrum') continue;
     if (!r.canvas.isConnected) continue;
     const { canvas, c2d, bars } = r;
     const w = canvas.width, h = canvas.height;

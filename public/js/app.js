@@ -307,6 +307,8 @@ function bindChrome() {
   window.addEventListener('keydown', (e) => {
     const tag = document.activeElement?.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+    // Folia 界面激活时:全局快捷键让位给 Folia 自有处理(避免双触发)
+    if (document.body.classList.contains('folia-interface-active')) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       openCmdK();
@@ -905,6 +907,8 @@ function bindWallpaperState() {
   api.on('wallpaper:state', (s2) => { state.wallpaperActive = !!s2.active; });
 }
 
+// Folia 界面切换:宿主自管按钮文字/标题(updateButtons),此处无需额外同步
+
 // ---------------- 启动 ----------------
 async function boot() {
   player.init();
@@ -914,6 +918,7 @@ async function boot() {
   bindPlayerCommands();
   bindUpdateEvents();
   bindWallpaperState();
+  bindFoliaSwitch();
 
   // 加载配置
   state.config = await api.invoke('config:get');
