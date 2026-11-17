@@ -6,6 +6,7 @@ import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { isAllowedMediaPath } from './library.js';
 import { getCoverDir } from './metadata.js';
+import { transcodeToWav, isTranscodable } from './audio/transcode.js';
 
 // 路径白名单:封面缓存目录 / 曲库文件夹 / 已索引文件,其余一律拒绝
 function inAllowedScope(filePath) {
@@ -33,7 +34,18 @@ export function registerProtocolHandler() {
         const raw = u.searchParams.get('path') || decodeURIComponent(u.pathname.replace(/^\/+/, ''));
         filePath = decodeURIComponent(raw).replace(/\//g, '\\');
 
-        const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+        let ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+        // APE/DSD:转码为缓存 WAV 后流式播放(失败给出可读错误,由渲染端 toast)
+        if (isTranscodable(filePath)) {
+          try {
+            const r = await transcodeToWav(filePath, ext);
+            if (!r) return new Response('transcode unsupported', { status: 415 });
+            filePath = r.wavPath;
+            ext = '.wav';
+          } catch (e) {
+            return new Response(JSON.stringify({ transcodeError: e.message }), { status: 422, headers: { 'Content-Type': 'application/json' } });
+          }
+        }
         if (!ALLOWED.has(ext)) {
           return new Response('forbidden ext: ' + ext, { status: 403 });
         }

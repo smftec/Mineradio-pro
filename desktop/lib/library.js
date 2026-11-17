@@ -7,9 +7,9 @@ import { createHash } from 'node:crypto';
 import { getStore } from './store.js';
 import { readMetadata, initMetadata } from './metadata.js';
 
-export const AUDIO_EXT = new Set(['.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg', '.oga', '.opus', '.webm', '.weba', '.aif', '.aiff']);
+export const AUDIO_EXT = new Set(['.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg', '.oga', '.opus', '.webm', '.weba', '.aif', '.aiff', '.ape', '.dsf']);
 // 识别但暂不支持解码的格式(播放时给出明确提示而非静默忽略)
-export const UNSUPPORTED_EXT = new Set(['.ape', '.dsf', '.dff']);
+export const UNSUPPORTED_EXT = new Set(['.dff']); // DFF(DIFF)暂不支持,.ape/.dsf 经转码播放
 
 const tracks = new Map(); // id -> track
 let watcher = null;

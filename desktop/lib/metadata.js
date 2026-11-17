@@ -35,6 +35,38 @@ function fallbackTitle(trackPath) {
 
 export async function readMetadata(filePath) {
   try {
+    // DSF 的 duration 由自研解析器修正(music-metadata 对 DSD 时长解析有偏差)
+    if (extname(filePath).toLowerCase() === '.dsf') {
+      try {
+        const { parseDsf } = await import('./audio/dsf-decoder.js');
+        const { openSync, readSync, closeSync } = await import('node:fs');
+        const fd = openSync(filePath, 'r');
+        const head = Buffer.alloc(200);
+        readSync(fd, head, 0, 200, 0);
+        closeSync(fd);
+        const info = parseDsf(head);
+        const meta = await mm.parseFile(filePath);
+        meta.format.duration = info.durationSec;
+        const c = meta.common || {};
+        const f = meta.format || {};
+        let cover = null;
+        if (c.picture && c.picture.length) cover = saveCover(c.picture[0], filePath);
+        return {
+          title: (c.title || '').trim() || fallbackTitle(filePath),
+          artist: (c.artist || c.albumartist || '未知艺术家').trim(),
+          album: (c.album || '未知专辑').trim(),
+          albumArtist: (c.albumartist || c.artist || '未知艺术家').trim(),
+          genre: (c.genre && c.genre[0]) || '未知流派',
+          year: c.year || null,
+          trackNo: c.track && c.track.no ? c.track.no : null,
+          duration: f.duration || 0,
+          sampleRate: f.sampleRate || null,
+          bitrate: f.bitrate ? Math.round(f.bitrate / 1000) : null,
+          cover,
+          lyrics: extractEmbeddedLyrics(c),
+        };
+      } catch { /* 解析失败回落常规流程 */ }
+    }
     const meta = await mm.parseFile(filePath, { duration: true });
     const c = meta.common || {};
     const f = meta.format || {};
