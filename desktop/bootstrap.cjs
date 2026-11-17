@@ -1,6 +1,17 @@
 // CJS bootstrap:privileged scheme 必须在 app ready 前注册(Electron 43:
 // 该 API 位于 protocol 模块上),完成后转入 ESM 主逻辑。
 const { app, protocol } = require('electron');
+const fs = require('node:fs');
+const path = require('node:path');
+
+// GPU 崩溃自愈标记:上次 GPU 崩溃后禁用硬件加速启动
+let gpuDisabled = false;
+try {
+  const flag = path.join(app.getPath('userData'), 'gpu-disabled.flag');
+  if (fs.existsSync(flag)) { gpuDisabled = true; }
+  if (gpuDisabled) app.disableHardwareAcceleration();
+  global.__gpuFlagPath = flag;
+} catch { /* ignore */ }
 
 // 开发模式(未打包)下,项目可能位于网络/虚拟盘(T: 等),
 // Windows 沙箱进程无法读取其上的 Electron 安装目录 → 禁用沙箱。

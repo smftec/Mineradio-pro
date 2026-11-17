@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, basename, extname } from 'node:path';
 import electron from 'electron';
-const { app } = electron;
+const { app, nativeImage } = electron;
 
 let coverDir = null;
 
@@ -25,7 +25,41 @@ function saveCover(picture, trackPath) {
   if (!existsSync(file)) {
     try { writeFileSync(file, Buffer.from(picture.data)); } catch { return null; }
   }
+  // 同步生成 96px 缩略(列表 38px/播放条 58px 使用,避免全尺寸解码开销)
+  const thumbName = `${hash}_t.jpg`;
+  const thumbFile = join(coverDir, thumbName);
+  if (!existsSync(thumbFile)) {
+    try {
+      const img = nativeImage.createFromBuffer(Buffer.from(picture.data));
+      if (!img.isEmpty()) {
+        writeFileSync(thumbFile, img.resize({ width: 96 }).toJPEG(82));
+      }
+    } catch { /* 缩略失败回退原图 */ }
+  }
   return file; // 绝对路径,渲染端经 mpro:// 读取
+}
+
+// 惰性补齐:为已有封面但缺缩略的曲目生成缩略(启动后台执行一次)
+export function ensureThumbs(tracks) {
+  if (!coverDir) return 0;
+  let done = 0;
+  for (const t of tracks) {
+    if (!t.cover || t.thumb) continue;
+    const base = t.cover.replace(/[\\/][^\\/]+$/, '');
+    const m = t.cover.match(/([0-9a-f]{16})\./);
+    if (!m) continue;
+    const thumbFile = join(base, `${m[1]}_t.jpg`);
+    try {
+      if (existsSync(thumbFile)) { t.thumb = thumbFile; continue; }
+      const img = nativeImage.createFromFile(t.cover);
+      if (!img.isEmpty()) {
+        writeFileSync(thumbFile, img.resize({ width: 96 }).toJPEG(82));
+        t.thumb = thumbFile;
+        done++;
+      }
+    } catch { /* ignore */ }
+  }
+  return done;
 }
 
 // 依赖顺序 fallback:未知 → 各种标签 → 文件名

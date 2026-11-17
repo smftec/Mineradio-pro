@@ -16,7 +16,7 @@ function render(st) {
   latest = st;
   $('m-title').textContent = st.title || '未在播放';
   $('m-artist').textContent = st.artist || '—';
-  $('m-cover').src = st.cover ? `mpro://media/?path=${encodeURIComponent(st.cover)}` : './assets/default-cover.png';
+  $('m-cover').src = st.thumb ? `mpro://media/?path=${encodeURIComponent(st.thumb)}` : (st.cover ? `mpro://media/?path=${encodeURIComponent(st.cover)}` : './assets/default-cover.png');
   $('m-cover').onerror = () => { $('m-cover').src = './assets/default-cover.png'; };
   $('m-i-play').classList.toggle('hidden', st.playing);
   $('m-i-pause').classList.toggle('hidden', !st.playing);

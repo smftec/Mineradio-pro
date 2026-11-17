@@ -6,6 +6,19 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// GPU 进程崩溃自愈:写标记禁用硬件加速并重启(标记由 bootstrap 读取)
+app.on('child-process-gone', (_e, details) => {
+  if (details.type === 'GPUProcess' && details.reason === 'Crashed') {
+    console.error('[gpu] crashed — disabling hardware acceleration and relaunching');
+    try {
+      const flag = global.__gpuFlagPath;
+      if (flag) require('node:fs').writeFileSync(flag, String(Date.now()));
+      app.relaunch();
+      app.exit(0);
+    } catch { /* ignore */ }
+  }
+});
+
 // 全局异常日志(便于排查用户反馈的问题)
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);

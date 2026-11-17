@@ -1,5 +1,5 @@
 // 视图渲染:曲库 / 分类 / 歌单
-import { api, coverUrl, fmtTime, esc, toast } from './api.js';
+import { api, coverUrl, thumbUrl, fmtTime, esc, toast } from './api.js';
 
 const DEFAULT_COVER = './assets/default-cover.png';
 
@@ -14,7 +14,7 @@ export function phClass(name) {
 export const EQ_BARS = `<span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span></span>`;
 
 function trackRow(t, i, playingId) {
-  const cover = coverUrl(t) || DEFAULT_COVER;
+  const cover = thumbUrl(t) || DEFAULT_COVER;
   const isPlaying = t.id === playingId;
   return `<tr data-id="${t.id}" class="${isPlaying ? 'playing' : ''}">
     <td class="t-num" data-i="${i}">${isPlaying ? EQ_BARS : i + 1}</td>
@@ -375,12 +375,12 @@ export function bindTable(root, state, tracks, playlistId = null) {
 }
 
 // 单行绑定(增量追加行复用;队列/收藏等视图需要 playFromList 上下文)
-export function bindTableRow(tr, state, tracks, playlistId = null, playFn = null) {
+export function bindTableRow(tr, state, tracks, playlistId = null) {
   const id = tr.dataset.id;
   tr.addEventListener('click', (e) => {
     if (e.target.closest('.t-actions') || e.target.closest('.t-artist') || e.target.closest('.t-album')) return;
     const idx = tracks.findIndex((t) => t.id === id);
-    if (idx >= 0) (playFn || state.playFromList)(tracks, idx);
+    if (idx >= 0) state.playFromList(tracks, idx);
   });
   tr.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -476,7 +476,6 @@ export function renderHome(root, state) {
   });
   root.querySelector('#hm-recent')?.addEventListener('click', () => state.navigate('recent-played'));
   root.querySelector('#hm-lyrics')?.addEventListener('click', () => {
-    if (player.current) state.navigate('library').then ? null : null;
     document.getElementById('pb-lyrics').click();
   });
   root.querySelector('#hm-cmdk')?.addEventListener('click', () => window.__openCmdK?.());

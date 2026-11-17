@@ -12,6 +12,12 @@ export function coverUrl(track) {
   return track && track.cover ? mediaUrl(track.cover) : null;
 }
 
+// 小尺寸展示用缩略(96px,列表/播放条);无缩略回退原图
+export function thumbUrl(track) {
+  if (track && track.thumb) return mediaUrl(track.thumb);
+  return coverUrl(track);
+}
+
 export function fmtTime(sec) {
   if (!isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);

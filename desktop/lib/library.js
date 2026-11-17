@@ -5,7 +5,7 @@ import { stat } from 'node:fs/promises';
 import { join, extname, basename, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { getStore } from './store.js';
-import { readMetadata, initMetadata } from './metadata.js';
+import { readMetadata, initMetadata, ensureThumbs } from './metadata.js';
 
 export const AUDIO_EXT = new Set(['.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg', '.oga', '.opus', '.webm', '.weba', '.aif', '.aiff', '.ape', '.dsf']);
 // 识别但暂不支持解码的格式(播放时给出明确提示而非静默忽略)
@@ -136,6 +136,11 @@ export async function scanFolders(folders) {
     }
     // 扫描完成统一落盘(扫描期间的高频防抖写合并为一次)
     getStore('library').flushAll();
+    // 扫描完成补齐封面缩略(新解析曲目)
+    try {
+      const n = ensureThumbs(allTracks());
+      if (n > 0) { store.scheduleSave(); console.log('[thumbs] ensured after scan:', n); }
+    } catch (e) { console.error('[thumbs]', e.message); }
   } finally {
     scanning = false;
   }
@@ -159,6 +164,17 @@ export async function initLibrary() {
     syncChangedFiles();
     startWatcher(folders);
   }
+  // 后台惰性补齐封面缩略(启动 4 秒后执行一次)
+  setTimeout(() => {
+    try {
+      const n = ensureThumbs(allTracks());
+      if (n > 0) {
+        store.scheduleSave();
+        send('library:changed', { tracks: allTracks() });
+        console.log('[thumbs] ensured:', n);
+      }
+    } catch (e) { console.error('[thumbs]', e.message); }
+  }, 4000);
 }
 
 // 启动后后台同步标签变更(mtime 变化的重新解析),异步并发执行不阻塞启动
