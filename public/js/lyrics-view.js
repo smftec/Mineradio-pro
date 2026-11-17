@@ -1,6 +1,6 @@
 // 主窗口歌词视图(覆盖层):逐字高亮 + 跟随滚动 + 实时频谱
 import { api, coverUrl, esc } from './api.js';
-import { registerSpectrum } from './visualizer.js';
+import { registerVisualizer, VISUAL_MODES } from './visual-modes.js';
 
 const view = {
   el: null,
@@ -16,23 +16,37 @@ const view = {
     const coverSrc = cover || './assets/default-cover.png';
     const el = document.createElement('div');
     el.className = 'lyrics-view';
+    const visMode = window.__state.config.visualMode || 'particles';
     el.innerHTML = `
+      <canvas class="lv-visual" id="lv-visual" width="1280" height="720"></canvas>
       <div class="lv-ambient" style="background-image:url('${coverSrc}')"></div>
       <div class="lv-veil"></div>
-      <button class="btn lv-close"><svg viewBox="0 0 24 24" class="ico" style="width:14px;height:14px"><path d="M6 6l12 12M18 6L6 18"/></svg> 退出歌词</button>
+      <div class="lv-toolbar">
+        <button class="btn" id="lv-mode" title="切换可视化模式">✦ ${VISUAL_MODES.find(m => m.id === visMode)?.name || '频谱粒子'}</button>
+        <button class="btn" id="lv-export">▣ 导出视频</button>
+        <button class="btn lv-close"><svg viewBox="0 0 24 24" class="ico" style="width:14px;height:14px"><path d="M6 6l12 12M18 6L6 18"/></svg> 退出歌词</button>
+      </div>
       <div class="lv-left">
         <img class="lv-cover" src="${coverSrc}" onerror="this.src='./assets/default-cover.png'">
         <div class="lv-info">
           <div class="lv-title">${esc(t?.title || '未在播放')}</div>
           <div class="lv-artist">${esc(t?.artist || '—')}</div>
         </div>
-        <canvas id="lv-spectrum" class="lv-spectrum" width="600" height="128" aria-hidden="true"></canvas>
       </div>
       <div class="lv-lyrics" id="lv-lyrics"><div class="empty" style="padding:40px">加载歌词中…</div></div>`;
     document.getElementById('app').appendChild(el);
     this.el = el;
-    // 歌词视图大频谱(关闭时反注册)
-    this._unregSpectrum = registerSpectrum(el.querySelector('#lv-spectrum'), { bars: 44 });
+    // 可视化背景(模式可循环切换)
+    this._unregVisual = registerVisualizer(el.querySelector('#lv-visual'), { mode: visMode });
+    el.querySelector('#lv-mode').addEventListener('click', () => {
+      const cur = window.__state.config.visualMode || 'particles';
+      const next = VISUAL_MODES[(VISUAL_MODES.findIndex(m => m.id === cur) + 1) % VISUAL_MODES.length];
+      window.__state.config.visualMode = next.id;
+      api.invoke('config:set', { visualMode: next.id });
+      this._setVisualMode(next.id);
+      el.querySelector('#lv-mode').textContent = '✦ ' + next.name;
+    });
+    el.querySelector('#lv-export').addEventListener('click', () => window.__exportVideo?.(this));
 
     el.querySelector('.lv-close').addEventListener('click', () => this.close());
 
@@ -90,6 +104,19 @@ const view = {
     this.sync(state_position());
     // 歌词翻译(异步,不阻塞渲染)
     this._maybeTranslate(trackId);
+  },
+
+  // 可视化模式切换
+  _setVisualMode(mode) {
+    if (this._unregVisual) this._unregVisual();
+    this._unregVisual = registerVisualizer(this.el.querySelector('#lv-visual'), { mode });
+  },
+
+  // 视频导出所需的当前歌词状态
+  getLyricState() {
+    const idx = this.activeIdx;
+    const line = this.lines[idx];
+    return { text: line?.text || '', words: line?.words || null, index: idx };
   },
 
   // 拉取歌词翻译并逐行插入 .lv-tran

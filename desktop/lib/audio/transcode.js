@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, existsSync, statSync, readdirSync, unlinkSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { app } from 'electron';
+import { getStore } from '../store.js';
 import { dsfToWav, parseDsf } from './dsf-decoder.js';
 
 const SUPPORTED_TRANSCODE = new Set(['.ape', '.dsf']);
@@ -14,15 +15,23 @@ export function isTranscodable(filePath) {
   return SUPPORTED_TRANSCODE.has(filePath.slice(filePath.lastIndexOf('.')).toLowerCase());
 }
 
+export function resetFfmpegCache() { ffmpegChecked = false; }
+
 export function detectFfmpeg() {
   if (ffmpegChecked) return ffmpegPath;
   ffmpegChecked = true;
-  const candidates = ['ffmpeg'];
+  // 设置中自定义路径优先
+  const custom = getStore('config').data.ffmpegPath;
+  if (custom) {
+    try {
+      const r = spawnSync(custom, ['-version'], { timeout: 5000 });
+      if (r.status === 0) { ffmpegPath = custom; return ffmpegPath; }
+    } catch { /* invalid path */ }
+  }
   try {
     const r = spawnSync('ffmpeg', ['-version'], { timeout: 5000 });
     if (r.status === 0) { ffmpegPath = 'ffmpeg'; return ffmpegPath; }
   } catch { /* not in PATH */ }
-  void candidates;
   ffmpegPath = null;
   return null;
 }

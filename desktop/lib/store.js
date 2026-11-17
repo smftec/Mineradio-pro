@@ -68,6 +68,8 @@ export function initStores() {
   stores.config = new Store('config.json', {
     theme: 'dark',
     accentColor: 'galaxy',
+    visualMode: 'particles',
+    ffmpegPath: '',
     volume: 0.8,
     crossfade: 0,
     repeat: 'off', // off | all | one

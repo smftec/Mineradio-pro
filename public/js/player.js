@@ -140,6 +140,16 @@ export const player = {
     this._els.B.volume = this.volume;
   },
 
+  // 音频流(视频导出录制用;tap 不影响扬声器输出)
+  getAudioStream() {
+    this._ensureCtx();
+    if (!this._msDest) {
+      this._msDest = this._ctx.createMediaStreamDestination();
+      this._limiter.connect(this._msDest);
+    }
+    return this._msDest.stream;
+  },
+
   // 实时频谱(Uint8Array 0~255,无 ctx 或未播放时为低幅值)
   getSpectrum() {
     if (!this._analyser) return null;

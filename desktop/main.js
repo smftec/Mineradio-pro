@@ -1,6 +1,6 @@
 // Mineradio pro — 主进程入口(由 bootstrap.cjs 转入;协议注册见 bootstrap.cjs)
 import electron from 'electron';
-const { app, BrowserWindow } = electron;
+const { app, BrowserWindow, session } = electron;
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 

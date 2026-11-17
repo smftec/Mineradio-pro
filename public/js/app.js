@@ -1,7 +1,7 @@
 // 主窗口入口:状态 + 路由 + 播放条 + 公共交互
 import { api, appInfo, coverUrl, fmtTime, esc, toast } from './api.js';
 import { player } from './player.js';
-import { renderView, renderHome, bindTable, bindDragReorder, EQ_BARS, trackTable, ACTIONS_PLAY_ALL } from './views.js';
+import { renderView, renderHome, renderRecordWall, bindTable, bindDragReorder, EQ_BARS, trackTable, ACTIONS_PLAY_ALL } from './views.js';
 import { registerSpectrum } from './visualizer.js';
 import { renderSettings, renderUpdateStatus } from './settings-view.js';
 import { openLyricsView, closeLyricsView, isLyricsOpen } from './lyrics-view.js';
@@ -50,6 +50,9 @@ const state = {
     } else if (this.view === 'home') {
       renderHome(root, this);
       this._homeUnreg = registerSpectrum(document.getElementById('home-spectrum'), { bars: 64 });
+      $('pb-queue').classList.remove('active');
+    } else if (this.view === 'wall') {
+      renderRecordWall(root, this);
       $('pb-queue').classList.remove('active');
     } else {
       renderView(root, this);

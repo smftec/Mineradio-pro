@@ -323,6 +323,38 @@ function viewPlaylistDetail(root, state, plId) {
   root.querySelector('#btn-del-pl')?.addEventListener('click', () => state.deletePlaylist(pl));
 }
 
+// ---------------- 唱片墙(CSS 3D 封面墙) ----------------
+export function renderRecordWall(root, state) {
+  const seen = new Map();
+  for (const t of state.tracks) {
+    const key = t.album || '未知专辑';
+    if (!seen.has(key)) seen.set(key, t);
+  }
+  const albums = [...seen.values()];
+  if (!albums.length) {
+    root.innerHTML = `<div class="empty"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">唱片墙是空的</div><div class="empty-sub">导入音乐后,专辑封面将以 3D 墙面呈现</div></div>`;
+    return;
+  }
+  root.innerHTML = `<div class="view-head"><h1>唱片墙</h1><span class="count">${albums.length} 张专辑</span>
+    <div class="view-actions"><button class="btn primary" id="wall-play-all">随机播放</button></div></div>
+    <div class="wall-stage"><div class="wall-grid">
+      ${albums.map((t) => {
+        const cover = coverUrl(t) || './assets/default-cover.png';
+        return `<div class="wall-card" data-album="${esc(t.album)}" title="${esc(t.album)}">
+          <img src="${cover}" loading="lazy" alt="" draggable="false">
+          <div class="wall-sub">${esc(t.artist)}</div>
+          <div class="wall-label">${esc(t.album)}</div>
+        </div>`;
+      }).join('')}
+    </div></div>`;
+  root.querySelector('#wall-play-all')?.addEventListener('click', () => {
+    if (albums.length) state.playFromList(albums, Math.floor(Math.random() * albums.length));
+  });
+  root.querySelectorAll('.wall-card').forEach((card) => {
+    card.addEventListener('click', () => state.navigate('albums', { value: card.dataset.album }));
+  });
+}
+
 // ---------- 绑定 ----------
 function bindBack(root, state) {
   root.querySelector('.back-link')?.addEventListener('click', (e) => {

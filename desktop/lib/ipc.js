@@ -12,6 +12,8 @@ import { mediaUrl } from './protocol.js';
 import * as updater from './updater.js';
 import { applyMediaKeys } from './shortcuts.js';
 import * as translation from './translation.js';
+import { detectFfmpeg, resetFfmpegCache } from './audio/transcode.js';
+import { writeFileSync } from 'node:fs';
 import * as backup from './backup.js';
 import {
   createMainWindow, createMiniWindow, closeMiniWindow,
@@ -187,6 +189,22 @@ export function registerIpc() {
   });
 
   // ---- 备份 / 恢复 ----
+  ipcMain.handle('export:saveVideo', (_e, base64, filename) => {
+    try {
+      const safe = String(filename).replace(/[\\/:*?"<>|]/g, '_');
+      const dir = app.getPath('downloads');
+      const path = join(dir, safe);
+      writeFileSync(path, Buffer.from(base64, 'base64'));
+      return { ok: true, path };
+    } catch (e) {
+      return { ok: false, reason: e.message };
+    }
+  });
+  ipcMain.handle('app:checkFfmpeg', () => {
+    resetFfmpegCache();
+    const path = detectFfmpeg();
+    return { found: !!path, path: path || '' };
+  });
   ipcMain.handle('translation:getConfig', () => translation.getConfig());
   ipcMain.handle('translation:set', (_e, patch) => translation.setConfig(patch || {}));
   ipcMain.handle('translation:test', () => translation.testTranslation());
