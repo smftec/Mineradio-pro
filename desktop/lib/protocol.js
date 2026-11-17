@@ -30,6 +30,7 @@ export function registerProtocolHandler() {
     protocol.handle('mpro', async (request) => {
       let filePath = '';
       try {
+        console.log('[mpro] request:', request.url.slice(0, 60));
         const u = new URL(request.url);
         const raw = u.searchParams.get('path') || decodeURIComponent(u.pathname.replace(/^\/+/, ''));
         filePath = decodeURIComponent(raw).replace(/\//g, '\\');

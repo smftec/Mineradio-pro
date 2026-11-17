@@ -1,6 +1,6 @@
 // 主窗口歌词视图(覆盖层):逐字高亮 + 跟随滚动 + 实时频谱
 import { api, coverUrl, esc } from './api.js';
-import { registerVisualizer, VISUAL_MODES } from './visual-modes.js';
+import { registerVisual, VISUAL_MODES, SHADER_IDS } from './visual-modes.js';
 
 const view = {
   el: null,
@@ -16,13 +16,15 @@ const view = {
     const coverSrc = cover || './assets/default-cover.png';
     const el = document.createElement('div');
     el.className = 'lyrics-view';
+    const ALL_MODES = [...VISUAL_MODES.map(m => ({ id: m.id, name: m.name })), ...SHADER_IDS.map(id => ({ id, name: '✧ ' + id }))];
     const visMode = window.__state.config.visualMode || 'particles';
+    const curName = (ALL_MODES.find(m => m.id === visMode)?.name) || '频谱粒子';
     el.innerHTML = `
       <canvas class="lv-visual" id="lv-visual" width="1280" height="720"></canvas>
       <div class="lv-ambient" style="background-image:url('${coverSrc}')"></div>
       <div class="lv-veil"></div>
       <div class="lv-toolbar">
-        <button class="btn" id="lv-mode" title="切换可视化模式">✦ ${VISUAL_MODES.find(m => m.id === visMode)?.name || '频谱粒子'}</button>
+        <button class="btn" id="lv-mode" title="切换可视化模式">✦ ${curName}</button>
         <button class="btn" id="lv-export">▣ 导出视频</button>
         <button class="btn lv-close"><svg viewBox="0 0 24 24" class="ico" style="width:14px;height:14px"><path d="M6 6l12 12M18 6L6 18"/></svg> 退出歌词</button>
       </div>
@@ -36,11 +38,11 @@ const view = {
       <div class="lv-lyrics" id="lv-lyrics"><div class="empty" style="padding:40px">加载歌词中…</div></div>`;
     document.getElementById('app').appendChild(el);
     this.el = el;
-    // 可视化背景(模式可循环切换)
-    this._unregVisual = registerVisualizer(el.querySelector('#lv-visual'), { mode: visMode });
+    // 可视化背景(19 种模式循环:3 Canvas2D + 16 WebGL)
+    this._unregVisual = registerVisual(el.querySelector('#lv-visual'), { mode: visMode });
     el.querySelector('#lv-mode').addEventListener('click', () => {
       const cur = window.__state.config.visualMode || 'particles';
-      const next = VISUAL_MODES[(VISUAL_MODES.findIndex(m => m.id === cur) + 1) % VISUAL_MODES.length];
+      const next = ALL_MODES[(ALL_MODES.findIndex(m => m.id === cur) + 1) % ALL_MODES.length];
       window.__state.config.visualMode = next.id;
       api.invoke('config:set', { visualMode: next.id });
       this._setVisualMode(next.id);
@@ -109,7 +111,7 @@ const view = {
   // 可视化模式切换
   _setVisualMode(mode) {
     if (this._unregVisual) this._unregVisual();
-    this._unregVisual = registerVisualizer(this.el.querySelector('#lv-visual'), { mode });
+    this._unregVisual = registerVisual(this.el.querySelector('#lv-visual'), { mode });
   },
 
   // 视频导出所需的当前歌词状态

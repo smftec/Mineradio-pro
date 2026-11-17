@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' mpro: data:; connect-src 'self'">
+  <title>Mineradio pro — 动态壁纸</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0d14; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="wp-canvas" width="1920" height="1080"></canvas>
+  <script type="module" src="./js/wallpaper.js"></script>
+</body>
+</html>

@@ -948,6 +948,16 @@ async function boot() {
   // 周期保存
   player.startProgressSaver();
   player.startSessionSaver();
+
+  // 频谱数据推送(桌面壁纸联动,30fps 节流)
+  let lastSpecPush = 0;
+  setInterval(() => {
+    const now = performance.now();
+    if (now - lastSpecPush < 33) return;
+    lastSpecPush = now;
+    const spec = player.getSpectrum();
+    if (spec) window.mpro.send('player:spec', Array.from(spec));
+  }, 33);
   setInterval(() => {
     api.invoke('config:set', {
       volume: player.volume, crossfade: player.crossfade,
