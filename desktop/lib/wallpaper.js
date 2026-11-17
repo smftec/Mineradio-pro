@@ -2,7 +2,7 @@
 // 原理:SendMessage(Progman, 0x052C) 触发系统生成 WorkerW 桌面层 →
 //       找到无 SHELLDLL_DefView 子窗口的那个 WorkerW → SetParent(我们的可视化窗口, WorkerW)
 // 参考通用实现思路(Lively Wallpaper 等开源项目的公开做法),FFI 调用全部自研。
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, app } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -22,6 +22,11 @@ const SetWindowPos = user32.func('SetWindowPos', 'int', ['int', 'int', 'int', 'i
 
 let wallpaperWindow = null;
 let mounted = false;
+
+// 应用退出时卸载壁纸(窗口销毁自动解除 WorkerW 挂载,桌面恢复)
+app.on('will-quit', () => {
+  try { unmountWallpaper(); } catch { /* ignore */ }
+});
 
 // 诊断:枚举桌面窗口树
 export function diagWindows() {

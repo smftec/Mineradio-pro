@@ -11,6 +11,7 @@ const view = {
 
   async open(state) {
     if (this.el) return;
+    window.__lyricsOverlay = true;
     const t = state.player.current;
     const cover = t ? coverUrl(t) : null;
     const coverSrc = cover || './assets/default-cover.png';
@@ -185,7 +186,8 @@ const view = {
   close() {
     for (const u of this.unsubs) u();
     this.unsubs = [];
-    if (this._unregSpectrum) { this._unregSpectrum(); this._unregSpectrum = null; }
+    window.__lyricsOverlay = false;
+    if (this._unregVisual) { this._unregVisual(); this._unregVisual = null; }
     this.el?.remove();
     this.el = null;
     this.lines = [];

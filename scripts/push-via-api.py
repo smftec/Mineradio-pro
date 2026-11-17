@@ -1,4 +1,6 @@
-# 通过 GitHub Git Data API 推送(github.com:443 被断时走 api.github.com)
+# GitHub Git Data API 全量推送:本地 blob sha 与远端 tree 对比,仅上传差异 blob
+# 用途:git 直连被断时的兜底(gh 走 api.github.com)
+# 限制:GitHub Trees API 无法删除文件,被删文件会残留在远端(待 git 直连恢复后 git push 清理)
 import base64, json, subprocess, sys, tempfile, os
 
 REPO = 'smftec/Mineradio-pro'
@@ -17,35 +19,47 @@ def gh(endpoint, method='GET', body=None):
         raise RuntimeError(f'gh api {endpoint}: {r.stderr[:300]}')
     return json.loads(r.stdout) if r.stdout.strip() else None
 
-base = gh('commits/main')
-base_sha = base['sha']
-base_tree = base['commit']['tree']['sha']
-print('base:', base_sha[:7])
+def git(*args):
+    return subprocess.run(['git'] + list(args), capture_output=True, text=True, encoding='utf-8').stdout
 
-diff = subprocess.run(['git', 'diff', '--name-status', base_sha[:7], 'HEAD'],
-                      capture_output=True, text=True, encoding='utf-8').stdout
+# 本地 HEAD 信息
+head_sha = git('rev-parse', 'HEAD').strip()
+head_tree = git('rev-parse', 'HEAD^{tree}').strip()
+msg = git('log', '-1', '--pretty=%B').strip()
+print('local HEAD:', head_sha[:7], 'tree:', head_tree[:7])
+
+# 远端 main
+remote = gh('commits/main')
+remote_sha = remote['sha']
+remote_tree = remote['commit']['tree']['sha']
+print('remote main:', remote_sha[:7], 'tree:', remote_tree[:7])
+
+# 远端 tree 全文件映射
+remote_tree_data = gh(f'git/trees/{remote_tree}?recursive=1')
+remote_map = {t['path']: t['sha'] for t in remote_tree_data['tree'] if t['type'] == 'blob'}
+
+# 本地全部文件 blob sha(git hash-object 与 GitHub blob sha 同算法)
+files = [f for f in git('ls-files').splitlines() if f.strip()]
 entries = []
-for line in diff.strip().splitlines():
-    status, path = line.split('\t', 1)
-    path = path.strip()
-    if status.startswith('D'):
-        entries.append({'path': path, 'mode': '100644', 'type': 'commit', 'sha': None})
+uploaded = 0
+for path in files:
+    if not path.strip():
+        continue
+    sha = git('hash-object', path).strip()
+    if remote_map.get(path) == sha:
+        entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': sha})
         continue
     content = open(path, 'rb').read()
     blob = gh('git/blobs', 'POST', body={'content': base64.b64encode(content).decode(), 'encoding': 'base64'})
     entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': blob['sha']})
-print('files changed:', len(entries))
+    uploaded += 1
+    print('upload:', path)
+print('total files:', len(files), 'uploaded blobs:', uploaded)
 
-tree = gh('git/trees', 'POST', body={'base_tree': base_tree, 'tree': entries})
+tree = gh('git/trees', 'POST', body={'base_tree': remote_tree, 'tree': entries})
 print('tree:', tree['sha'][:7])
 
-msg = """v2.3.0 可视化引擎 + 唱片墙 + 视频导出
-
-- 可视化引擎(自研 Canvas2D):频谱粒子/环形频谱/波形流动,主题色联动
-- 唱片墙:CSS 3D 封面墙(透视 + hover 抬升)
-- 视频导出:WebM(VP9+Opus)可视化+逐字歌词+封面,保存到下载目录
-- 设置页:可视化模式选择、ffmpeg 路径自定义与检测"""
-commit = gh('git/commits', 'POST', body={'message': msg, 'tree': tree['sha'], 'parents': [base_sha]})
+commit = gh('git/commits', 'POST', body={'message': msg, 'tree': tree['sha'], 'parents': [remote_sha]})
 print('commit:', commit['sha'][:7])
 
 gh('git/refs/heads/main', 'PATCH', body={'sha': commit['sha'], 'force': False})
