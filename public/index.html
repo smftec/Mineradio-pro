@@ -21,8 +21,13 @@
         <button id="search-clear" class="search-clear" title="清空搜索" tabindex="-1">✕</button>
       </div>
       <div class="tb-actions">
-        <button id="btn-update-badge" class="tb-btn update-badge hidden" title="发现新版本">
-          <svg viewBox="0 0 24 24" class="ico"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+        <button id="btn-update-badge" class="tb-btn update-badge hidden" title="发现新版本" aria-label="软件更新">
+          <svg class="update-ring-svg" viewBox="0 0 34 34">
+            <circle class="ring-base" cx="17" cy="17" r="15"/>
+            <circle class="ring-dash" cx="17" cy="17" r="15"/>
+            <circle class="ring-progress" cx="17" cy="17" r="15"/>
+            <path class="ring-arrow" d="M17 10v8M13.5 14.5L17 10.5l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
           <span class="dot"></span>
         </button>
         <button id="btn-min" class="tb-btn" title="最小化"><svg viewBox="0 0 24 24" class="ico"><path d="M5 12h14"/></svg></button>

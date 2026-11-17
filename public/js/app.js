@@ -792,6 +792,8 @@ state.applyAccent = async function (accent) {
   state.config.accentColor = accent;
   if (accent === 'galaxy') delete document.documentElement.dataset.accent;
   else document.documentElement.dataset.accent = accent;
+  document.body.classList.add('accent-pulse');
+  setTimeout(() => document.body.classList.remove('accent-pulse'), 740);
   await api.invoke('config:set', { accentColor: accent });
 };
 
@@ -855,19 +857,39 @@ function bindPlayerCommands() {
 
 // ---------------- 更新事件 ----------------
 function bindUpdateEvents() {
+  const badge = $('btn-update-badge');
+  const setBadgeState = (cls) => {
+    badge.className = 'tb-btn update-badge ' + cls;
+    badge.classList.toggle('hidden', cls === 'idle' || cls === 'not-available');
+  };
   api.on('update:event', (ev) => {
     state.updateState = ev;
-    if (ev.type === 'available') {
-      $('btn-update-badge').classList.remove('hidden');
-      toast(`发现新版本 v${ev.version},可到设置中下载更新`, 5000);
+    switch (ev.type) {
+      case 'checking': setBadgeState('checking'); break;
+      case 'available':
+        setBadgeState('has-update');
+        toast(`发现新版本 v${ev.version},可到设置中下载更新`, 5000);
+        break;
+      case 'not-available': setBadgeState('idle'); break;
+      case 'progress':
+        setBadgeState('downloading');
+        // 进度环:percent → stroke-dashoffset(周长 100)
+        const ring = badge.querySelector('.ring-progress');
+        if (ring) ring.style.strokeDashoffset = String(100 - (ev.percent || 0));
+        break;
+      case 'downloaded':
+        setBadgeState('ready');
+        toast('更新下载完成,重启后安装', 4000);
+        break;
+      case 'error': setBadgeState('idle'); break;
     }
-    if (ev.type === 'downloaded') toast('更新下载完成,重启后安装', 4000);
     if (state.view === 'settings') {
       renderUpdateStatus(document.getElementById('view-root'), ev);
     }
   });
   state.checkUpdate = async () => {
     state.updateState = { type: 'checking' };
+    setBadgeState('checking');
     renderUpdateStatus(document.getElementById('view-root'), state.updateState);
     await api.invoke('update:check');
   };

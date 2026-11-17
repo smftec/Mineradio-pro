@@ -444,7 +444,7 @@ export function renderHome(root, state) {
             命令面板 Ctrl+K
           </button>
         </div>
-        <div class="home-visual">
+        <div class="home-visual ${playing ? "" : "drift"}">
           <img class="home-disc ${playing ? 'spinning' : ''}" id="hm-disc" src="${cover}" onerror="this.src='./assets/default-cover.png'" draggable="false">
           <div class="home-eq ${playing ? 'live' : ''}" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -460,7 +460,7 @@ export function renderHome(root, state) {
       ${albumTiles.map((t, i) => {
         const cover2 = coverUrl(t) || './assets/default-cover.png';
         const big = i < 2;
-        return `<div class="home-tile" data-album="${esc(t.album)}">
+        return `<div class="home-tile float" data-album="${esc(t.album)}">
           <img src="${cover2}" loading="lazy" alt="" draggable="false">
           ${big ? `<div class="tile-sub">${esc(t.artist)}</div><div class="tile-label">${esc(t.album)}</div>` : ''}
         </div>`;
