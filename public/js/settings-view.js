@@ -34,6 +34,29 @@ export function renderSettings(root, state) {
         </select>
         <span class="val">歌词视图背景可视化(视图内也可循环切换)</span>
       </div>
+      <div class="set-row"><label>渲染分辨率</label>
+        <select id="set-dpr">
+          ${[['auto', '自动(最高 1.5x)'], ['1', '1x(性能优先)'], ['1.5', '1.5x'], ['2', '2x(画质优先)']].map(([v, n]) =>
+            `<option value="${v}" ${(cfg.render?.dpr || 'auto') === v ? 'selected' : ''}>${n}</option>`).join('')}
+        </select>
+        <span class="val">WebGL 视觉渲染分辨率档位</span>
+      </div>
+      <div class="set-row"><label>视觉预设</label>
+        <select id="set-preset-list">
+          ${(cfg.visualPresets || []).map((p2, i) => `<option value="${i}">${esc(p2.name)}(${esc(p2.effect)})</option>`).join('') || '<option value="">(无已保存预设)</option>'}
+        </select>
+        <button class="btn" id="btn-preset-apply">应用</button>
+        <button class="btn danger" id="btn-preset-del">删除</button>
+      </div>
+      <div class="set-row"><label>当前效果参数</label>
+        <span class="val">强度</span><input type="range" class="slider" id="set-vis-intensity" min="0.2" max="2.5" step="0.1" value="${(cfg.visualParams?.intensity || 1)}" style="max-width:130px">
+        <span class="val">速度</span><input type="range" class="slider" id="set-vis-speed" min="0.1" max="4" step="0.1" value="${(cfg.visualParams?.speed || 1)}" style="max-width:130px">
+      </div>
+      <div class="set-row">
+        <button class="btn primary" id="btn-preset-save">保存为预设</button>
+        <button class="btn" id="btn-preset-export">导出 JSON</button>
+        <button class="btn" id="btn-preset-import">导入 JSON</button>
+      </div>
       <div class="set-row"><label>主题色</label>
         <select id="set-accent">
           ${[['galaxy', '星河紫(默认)'], ['deep-sea', '深海青'], ['ember', '落日余烬'], ['forest', '森野绿'], ['sakura', '樱粉'], ['graphite', '石墨银'], ['midnight', '午夜靛蓝']].map(([v, n]) =>
@@ -128,6 +151,16 @@ export function renderSettings(root, state) {
       </div>
     </div>
 
+    <div class="set-group" id="wallpaper-group">
+      <h3>动态桌面壁纸</h3>
+      <div class="set-row"><label>启用动态壁纸</label>
+        <button class="btn primary" id="btn-wallpaper-on">挂载到桌面</button>
+        <button class="btn" id="btn-wallpaper-off">卸载恢复</button>
+        <span class="val">将可视化画面(跟随播放)挂载到桌面图标层之后;应用退出时自动卸载</span>
+      </div>
+      <div class="update-status" id="wallpaper-status"></div>
+    </div>
+
     <div class="set-group" id="translation-group">
       <h3>歌词翻译</h3>
       <div class="set-row"><label>启用歌词翻译</label>
@@ -151,6 +184,19 @@ export function renderSettings(root, state) {
         <button class="btn primary" id="btn-tran-save">保存翻译设置</button>
       </div>
       <div class="update-status" id="tran-status"></div>
+    </div>
+
+    <div class="set-group">
+      <h3>Wallpaper Engine 联动</h3>
+      <div class="set-row"><label>检测 Wallpaper Engine</label>
+        <button class="btn" id="btn-we-detect">检测</button>
+        <span class="val" id="we-status">将可视化导出为 Wallpaper Engine Web 壁纸项目(自研桥接,使用 WE 音频 API)</span>
+      </div>
+      <div class="set-row"><label>导出项目</label>
+        <button class="btn primary" id="btn-we-export">导出当前视觉到 Wallpaper Engine</button>
+        <button class="btn" id="btn-we-open">打开项目目录</button>
+      </div>
+      <div class="update-status" id="we-export-status"></div>
     </div>
 
     <div class="set-group">
@@ -338,6 +384,101 @@ async function bindSettings(root, state) {
     const r = await api.invoke('wallpaper:unmount');
     setWpStatus(r.ok ? '已卸载,桌面已恢复' : '卸载失败', r.ok);
   });
+
+  // 渲染档位
+  root.querySelector('#set-dpr').addEventListener('change', async (e) => {
+    await api.invoke('config:set', { render: { dpr: e.target.value } });
+    toast('渲染分辨率已保存,重新打开歌词视图生效');
+  });
+
+  // 视觉预设系统
+  const presetSel = root.querySelector('#set-preset-list');
+  const refreshPresets = () => {
+    const ps = cfg.visualPresets || [];
+    presetSel.innerHTML = ps.map((p2, i) => `<option value="${i}">${esc(p2.name)}(${esc(p2.effect)})</option>`).join('') || '<option value="">(无已保存预设)</option>';
+  };
+  const currentPreset = () => ({
+    effect: cfg.visualMode || 'particles',
+    params: {
+      intensity: parseFloat(root.querySelector('#set-vis-intensity').value),
+      speed: parseFloat(root.querySelector('#set-vis-speed').value),
+      c1: cfg.visualParams?.c1 || null,
+      c2: cfg.visualParams?.c2 || null,
+    },
+  });
+  root.querySelector('#btn-preset-save').addEventListener('click', async () => {
+    const name = `预设 ${new Date().toLocaleString('zh', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    const ps = cfg.visualPresets || [];
+    ps.push({ name, ...currentPreset(), savedAt: Date.now() });
+    await api.invoke('config:set', { visualPresets: ps });
+    refreshPresets();
+    presetSel.value = ps.length - 1;
+    toast(`已保存「${name}」`);
+  });
+  root.querySelector('#btn-preset-del').addEventListener('click', async () => {
+    const i = parseInt(presetSel.value, 10);
+    if (isNaN(i)) return;
+    const ps = cfg.visualPresets || [];
+    ps.splice(i, 1);
+    await api.invoke('config:set', { visualPresets: ps });
+    refreshPresets();
+    toast('预设已删除');
+  });
+  root.querySelector('#btn-preset-apply').addEventListener('click', async () => {
+    const i = parseInt(presetSel.value, 10);
+    const ps = cfg.visualPresets || [];
+    if (isNaN(i) || !ps[i]) return;
+    const p2 = ps[i];
+    await api.invoke('config:set', { visualMode: p2.effect, visualParams: p2.params });
+    cfg.visualMode = p2.effect; cfg.visualParams = p2.params;
+    root.querySelector('#set-vis-intensity').value = p2.params.intensity;
+    root.querySelector('#set-vis-speed').value = p2.params.speed;
+    toast(`已应用「${p2.name}」— 重新打开歌词视图生效`);
+  });
+  root.querySelector('#btn-preset-export').addEventListener('click', async () => {
+    const i = parseInt(presetSel.value, 10);
+    const ps = cfg.visualPresets || [];
+    if (isNaN(i) || !ps[i]) { toast('请先选择要导出的预设'); return; }
+    const payload = JSON.stringify({ app: 'mineradio-pro-visual-preset', preset: ps[i] }, null, 2);
+    const r = await api.invoke('preset:save', payload, `mineradio-preset-${ps[i].effect}.json`);
+    if (r.ok) toast(`预设已导出:${r.path}`, 5000);
+  });
+  root.querySelector('#btn-preset-import').addEventListener('click', async () => {
+    const r = await api.invoke('preset:load');
+    if (!r.ok) { if (r.reason !== 'canceled') toast(`导入失败:${r.reason}`, 4000); return; }
+    const ps = cfg.visualPresets || [];
+    ps.push({ name: r.preset.name || '导入预设', ...r.preset, importedAt: Date.now() });
+    await api.invoke('config:set', { visualPresets: ps });
+    refreshPresets();
+    toast(`已导入「${r.preset.name || '预设'}」`);
+  });
+  // 强度/速度滑块实时保存
+  root.querySelector('#set-vis-intensity').addEventListener('change', (e) => {
+    api.invoke('config:set', { visualParams: { ...cfg.visualParams, intensity: parseFloat(e.target.value) } });
+  });
+  root.querySelector('#set-vis-speed').addEventListener('change', (e) => {
+    api.invoke('config:set', { visualParams: { ...cfg.visualParams, speed: parseFloat(e.target.value) } });
+  });
+
+  // Wallpaper Engine 联动
+  root.querySelector('#btn-we-detect').addEventListener('click', async () => {
+    const r = await api.invoke('we:detect');
+    const box = root.querySelector('#we-status');
+    box.innerHTML = r.found
+      ? `<div class="val" style="color:#4ade80">✓ 检测到 Wallpaper Engine:${esc(r.path)}</div>`
+      : '<div class="val" style="color:var(--danger)">✕ 未检测到 Wallpaper Engine(需 Steam 安装 Wallpaper Engine)</div>';
+  });
+  root.querySelector('#btn-we-export').addEventListener('click', async () => {
+    const box = root.querySelector('#we-export-status');
+    box.innerHTML = '<div class="val"><span class="spin-icon"></span> 正在导出项目…</div>';
+    const r = await api.invoke('we:export', cfg.visualMode || 'particles', cfg.visualParams || {});
+    if (r.ok) {
+      box.innerHTML = `<div class="val" style="color:#4ade80">✓ 项目已导出:${esc(r.path)}</div><div class="val">在 Wallpaper Engine 中选择「我的项目」→ Mineradio pro Visualizer 即可使用(音频联动已内置)</div>`;
+    } else {
+      box.innerHTML = `<div class="val" style="color:var(--danger)">✕ ${esc(r.reason)}</div>`;
+    }
+  });
+  root.querySelector('#btn-we-open').addEventListener('click', () => api.invoke('we:openProjects'));
 
   // 全局媒体键
   root.querySelector('#set-media-keys').addEventListener('change', async (e) => {

@@ -39,8 +39,9 @@ const view = {
       <div class="lv-lyrics" id="lv-lyrics"><div class="empty" style="padding:40px">加载歌词中…</div></div>`;
     document.getElementById('app').appendChild(el);
     this.el = el;
-    // 可视化背景(19 种模式循环:3 Canvas2D + 16 WebGL)
+    // 可视化背景(19 种模式循环:3 Canvas2D + 16 WebGL)+ Folia 预设参数
     this._unregVisual = registerVisual(el.querySelector('#lv-visual'), { mode: visMode });
+    if (window.__state.config.visualParams) this._setVisualParams(window.__state.config.visualParams);
     el.querySelector('#lv-mode').addEventListener('click', () => {
       const cur = window.__state.config.visualMode || 'particles';
       const next = ALL_MODES[(ALL_MODES.findIndex(m => m.id === cur) + 1) % ALL_MODES.length];
@@ -113,6 +114,12 @@ const view = {
   _setVisualMode(mode) {
     if (this._unregVisual) this._unregVisual();
     this._unregVisual = registerVisual(this.el.querySelector('#lv-visual'), { mode });
+    if (window.__state.config.visualParams) this._setVisualParams(window.__state.config.visualParams);
+  },
+
+  // 视觉参数(Folia 预设):{ intensity, speed } — 经全局入口调制渲染
+  _setVisualParams(params) {
+    window.__applyVisualParams?.(params);
   },
 
   // 视频导出所需的当前歌词状态

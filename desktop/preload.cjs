@@ -11,6 +11,7 @@ const INVOKE_CHANNELS = new Set([
   'config:get', 'config:set', 'app:setLoginItem', 'app:getLoginItem',
   'fav:toggle', 'shortcuts:setMediaKeys', 'backup:export', 'backup:import', 'backup:relaunch',
   'wallpaper:mount', 'wallpaper:unmount', 'wallpaper:isMounted', 'wallpaper:diag',
+  'we:detect', 'we:export', 'we:openProjects', 'preset:save', 'preset:load',
   'translation:getConfig', 'translation:set', 'translation:test', 'translation:translate', 'app:checkFfmpeg', 'export:saveVideo',
   'update:check', 'update:download', 'update:install', 'update:skip', 'update:openReleases',
 ]);
