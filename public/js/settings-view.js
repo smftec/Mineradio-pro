@@ -1,5 +1,6 @@
 // 设置视图:外观 / 播放 / 音频 / 曲库 / 桌面歌词 / 软件更新 / 关于
 import { api, esc, toast, appInfo } from './api.js';
+import { SHADER_IDS } from './visual-modes.js';
 
 const EQ_FREQS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 const EQ_PRESETS = {
@@ -27,7 +28,8 @@ export function renderSettings(root, state) {
       </div>
       <div class="set-row"><label>可视化模式</label>
         <select id="set-visual">
-          ${[['particles', '频谱粒子'], ['ring', '环形频谱'], ['wave', '波形流动']].map(([v, n]) =>
+          ${[['particles', '频谱粒子(Canvas2D)'], ['ring', '环形频谱(Canvas2D)'], ['wave', '波形流动(Canvas2D)']].concat(
+            SHADER_IDS.map(id => [id, '✧ ' + id + '(WebGL)'])).map(([v, n]) =>
             `<option value="${v}" ${(cfg.visualMode || 'particles') === v ? 'selected' : ''}>${n}</option>`).join('')}
         </select>
         <span class="val">歌词视图背景可视化(视图内也可循环切换)</span>
@@ -322,6 +324,19 @@ async function bindSettings(root, state) {
     box.innerHTML = r.found
       ? `<span style="color:#4ade80">✓ 检测到 ffmpeg(${esc(r.path)})</span>`
       : '<span style="color:var(--danger)">✕ 未检测到 ffmpeg — APE 播放需要安装 ffmpeg.org</span>';
+  });
+
+  // 动态桌面壁纸
+  const wpStatus = root.querySelector('#wallpaper-status');
+  const setWpStatus = (t, ok) => { wpStatus.innerHTML = `<div class="val" style="color:${ok ? '#4ade80' : 'var(--danger)'}">${esc(t)}</div>`; };
+  root.querySelector('#btn-wallpaper-on').addEventListener('click', async () => {
+    setWpStatus('正在挂载到桌面…', true);
+    const r = await api.invoke('wallpaper:mount', cfg.visualMode || 'nebula');
+    setWpStatus(r.ok ? '✓ 已挂载 — 可视化壁纸运行中(播放联动)' : `✕ ${r.reason || '挂载失败'}`, r.ok);
+  });
+  root.querySelector('#btn-wallpaper-off').addEventListener('click', async () => {
+    const r = await api.invoke('wallpaper:unmount');
+    setWpStatus(r.ok ? '已卸载,桌面已恢复' : '卸载失败', r.ok);
   });
 
   // 全局媒体键

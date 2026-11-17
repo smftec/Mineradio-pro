@@ -1,6 +1,27 @@
 // 可视化引擎:三种 Canvas2D 视觉模式(频谱粒子 / 环形频谱 / 波形流动)
 // 共享 player 的 AnalyserNode 数据;主题色跟随 CSS 变量实时联动
 import { player } from './player.js';
+import { SHADER_IDS } from './shaders.js';
+export { SHADER_IDS };
+import { ShaderEngine, attachEngine, webglAvailable } from './webgl-engine.js';
+
+let glProbe = null;
+function probeGL() {
+  if (glProbe === null) {
+    try { const test = new ShaderEngine(document.createElement('canvas')); glProbe = test.ok ? 'yes' : 'no'; }
+    catch { glProbe = 'no'; }
+  }
+  return glProbe;
+}
+
+// 统一注册:shader id 走 WebGL,canvas2d 模式走原绘制器
+export function registerVisual(canvas, { mode = 'particles' } = {}) {
+  if (SHADER_IDS.includes(mode) && probeGL() === 'yes') {
+    const engine = new ShaderEngine(canvas);
+    if (engine.ok && engine.use(mode)) { engine.active = true; return attachEngine(engine); }
+  }
+  return registerVisualizer(canvas, { mode });
+}
 
 export const VISUAL_MODES = [
   { id: 'particles', name: '频谱粒子' },

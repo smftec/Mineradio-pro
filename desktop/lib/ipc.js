@@ -9,6 +9,7 @@ import { getLyrics } from './lyrics.js';
 import * as playlists from './playlists.js';
 import * as stats from './stats.js';
 import { mediaUrl } from './protocol.js';
+import { mountWallpaper, unmountWallpaper, isMounted, diagWindows } from './wallpaper.js';
 import * as updater from './updater.js';
 import { applyMediaKeys } from './shortcuts.js';
 import * as translation from './translation.js';
@@ -124,6 +125,13 @@ export function registerIpc() {
   ipcMain.on('player:tick', (e, tick) => {
     broadcastExcept(e.sender, 'player:tick', tick);
   });
+  ipcMain.on('player:spec', (e, bins) => {
+    broadcastExcept(e.sender, 'player:spec', bins);
+  });
+  ipcMain.handle('wallpaper:mount', (_e, mode) => mountWallpaper(mode));
+  ipcMain.handle('wallpaper:unmount', () => unmountWallpaper());
+  ipcMain.handle('wallpaper:isMounted', () => isMounted());
+  ipcMain.handle('wallpaper:diag', () => diagWindows());
   ipcMain.on('player:command', (e, cmd, arg) => {
     broadcastExcept(e.sender, 'player:command', { cmd, arg });
   });
