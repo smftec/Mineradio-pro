@@ -302,7 +302,7 @@ export function renderUpdateStatus(root, us) {
   const rows = [];
   switch (us?.type) {
     case 'checking':
-      rows.push('<div class="val">正在检查更新…</div>');
+      rows.push('<div class="val"><span class="spin-icon"></span> 正在检查更新…</div>');
       break;
     case 'available':
       rows.push(`<div style="color:var(--accent2);font-weight:600">发现新版本 v${esc(us.version)}</div>`);

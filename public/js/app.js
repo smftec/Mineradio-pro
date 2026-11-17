@@ -117,7 +117,17 @@ function markPlayingRow() {
   });
 }
 
+let lastPlayingState = null;
 function updatePlayState() {
+  const wasPlaying = lastPlayingState;
+  lastPlayingState = player.playing;
+  if (wasPlaying !== null && wasPlaying !== player.playing) {
+    const btn = document.querySelector('.pb-playbtn');
+    btn.classList.remove('pop');
+    void btn.offsetWidth;
+    btn.classList.add('pop');
+    setTimeout(() => btn.classList.remove('pop'), 450);
+  }
   $('pb-icon-play').classList.toggle('hidden', player.playing);
   $('pb-icon-pause').classList.toggle('hidden', !player.playing);
   $('pb-shuffle').classList.toggle('active', player.shuffle);
@@ -138,8 +148,17 @@ function bindPlaybar() {
   $('pb-play').addEventListener('click', () => player.toggle());
   $('pb-next').addEventListener('click', () => player.next(false));
   $('pb-prev').addEventListener('click', () => player.prev());
-  $('pb-shuffle').addEventListener('click', () => player.setShuffle(!player.shuffle));
+  const popBtn = (btn) => {
+    const ico = btn.querySelector('svg');
+    if (!ico) return;
+    ico.classList.remove('pop');
+    void ico.offsetWidth;
+    ico.classList.add('pop');
+    setTimeout(() => ico.classList.remove('pop'), 450);
+  };
+  $('pb-shuffle').addEventListener('click', () => { popBtn($('pb-shuffle')); player.setShuffle(!player.shuffle); });
   $('pb-repeat').addEventListener('click', () => {
+    popBtn($('pb-repeat'));
     const order = ['off', 'all', 'one'];
     player.setRepeat(order[(order.indexOf(player.repeat) + 1) % 3]);
   });
@@ -154,7 +173,26 @@ function bindPlaybar() {
   // 进度条拖动
   let seekDrag = false;
   seekbar.addEventListener('mousedown', () => { seekDrag = true; seekbar.classList.add('dragging'); });
-  window.addEventListener('mousemove', (e) => { if (seekDrag) seekFromEvent(e); });
+  let lastParticle = 0;
+  window.addEventListener('mousemove', (e) => {
+    if (!seekDrag) return;
+    seekFromEvent(e);
+    // 拖动粒子尾迹(节流 45ms,参考原版 progress-particle)
+    const now = performance.now();
+    if (now - lastParticle > 45) {
+      lastParticle = now;
+      const p = document.createElement('span');
+      p.className = 'progress-particle';
+      const dx = (Math.random() * 2 - 1) * 34;
+      const dy = -Math.random() * 26 - 6;
+      p.style.setProperty('--px', e.clientX + 'px');
+      p.style.setProperty('--py', e.clientY + 'px');
+      p.style.setProperty('--dx', dx + 'px');
+      p.style.setProperty('--dy', dy + 'px');
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 620);
+    }
+  });
   window.addEventListener('mouseup', () => { seekDrag = false; seekbar.classList.remove('dragging'); });
 
   $('pb-queue').addEventListener('click', () => {
