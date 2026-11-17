@@ -501,6 +501,18 @@ tr:hover .t-actions button { opacity: 1; }
 }
 .lv-line.active .w-done { color: var(--accent2); text-shadow: 0 0 16px rgba(var(--accent2-rgb), .45); }
 .lv-line .word { transition: color .12s; }
+.lv-tran {
+  padding: 1px 14px 6px; margin-top: -6px;
+  font-size: 13px; line-height: 1.5; color: var(--muted);
+  animation: row-in .3s cubic-bezier(.16, 1, .3, 1) both;
+}
+.lv-tran.pending { color: var(--faint); opacity: .6; }
+input[type="password"].set-input {
+  background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; outline: none; min-width: 200px;
+  letter-spacing: 1px;
+}
+input[type="password"].set-input:focus { border-color: rgba(124, 92, 255, .5); }
 .lv-close {
   position: absolute; top: 18px; right: 22px; z-index: 3;
 }

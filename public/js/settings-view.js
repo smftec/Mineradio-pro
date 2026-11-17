@@ -113,6 +113,31 @@ export function renderSettings(root, state) {
       </div>
     </div>
 
+    <div class="set-group" id="translation-group">
+      <h3>歌词翻译</h3>
+      <div class="set-row"><label>启用歌词翻译</label>
+        <input type="checkbox" class="switch" id="set-tran-on">
+        <span class="val">通过 OpenAI 兼容接口逐行翻译歌词(API Key 经系统加密存储)</span>
+      </div>
+      <div class="set-row"><label>接口地址</label>
+        <input type="text" class="set-input" id="set-tran-endpoint" placeholder="https://api.openai.com/v1/chat/completions">
+      </div>
+      <div class="set-row"><label>模型</label>
+        <input type="text" class="set-input" id="set-tran-model" placeholder="gpt-4o-mini">
+      </div>
+      <div class="set-row"><label>API Key</label>
+        <input type="password" class="set-input" id="set-tran-key" placeholder="sk-…(留空保持不变)">
+      </div>
+      <div class="set-row"><label>目标语言</label>
+        <select id="set-tran-lang">
+          ${[['zh-CN', '简体中文'], ['zh-TW', '繁體中文'], ['en', 'English'], ['ja', '日本語']].map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}
+        </select>
+        <button class="btn" id="btn-tran-test">测试连接</button>
+        <button class="btn primary" id="btn-tran-save">保存翻译设置</button>
+      </div>
+      <div class="update-status" id="tran-status"></div>
+    </div>
+
     <div class="set-group">
       <h3>备份与恢复</h3>
       <div class="set-row"><label>整机备份</label>
@@ -156,7 +181,7 @@ export function renderSettings(root, state) {
 }
 
 // ---------- 绑定 ----------
-function bindSettings(root, state) {
+async function bindSettings(root, state) {
   const cfg = state.config;
 
   root.querySelector('#set-theme').addEventListener('change', (e) => {
@@ -270,6 +295,45 @@ function bindSettings(root, state) {
   root.querySelector('#set-media-keys').addEventListener('change', async (e) => {
     await api.invoke('shortcuts:setMediaKeys', e.target.checked);
     toast(e.target.checked ? '全局媒体键已开启' : '全局媒体键已关闭');
+  });
+
+  // 歌词翻译
+  const tranCfg = await api.invoke('translation:getConfig');
+  const tranOn = root.querySelector('#set-tran-on');
+  tranOn.checked = !!tranCfg.enabled;
+  root.querySelector('#set-tran-endpoint').value = tranCfg.endpoint || '';
+  root.querySelector('#set-tran-model').value = tranCfg.model || '';
+  root.querySelector('#set-tran-lang').value = tranCfg.targetLang || 'zh-CN';
+  if (tranCfg.keyUnavailable) {
+    const box = root.querySelector('#tran-status');
+    box.innerHTML = '<div class="val" style="color:var(--danger)">系统加密组件不可用,无法存储 API Key(可改用不带鉴权的本地接口)</div>';
+  }
+  tranOn.addEventListener('change', async (e) => {
+    const r = await api.invoke('translation:set', { enabled: e.target.checked });
+    toast(e.target.checked ? '歌词翻译已开启' : '歌词翻译已关闭');
+    if (!r.ok) toast(r.reason || '保存失败', 4000);
+  });
+  root.querySelector('#btn-tran-save').addEventListener('click', async () => {
+    const r = await api.invoke('translation:set', {
+      endpoint: root.querySelector('#set-tran-endpoint').value,
+      model: root.querySelector('#set-tran-model').value,
+      targetLang: root.querySelector('#set-tran-lang').value,
+      apiKey: root.querySelector('#set-tran-key').value,
+    });
+    toast(r.ok ? '翻译设置已保存' : (r.reason || '保存失败'));
+  });
+  root.querySelector('#btn-tran-test').addEventListener('click', async () => {
+    const box = root.querySelector('#tran-status');
+    box.innerHTML = '<div class="val"><span class="spin-icon"></span> 正在测试连接…</div>';
+    // 先保存当前表单再测试(确保测试的是填入的配置)
+    await api.invoke('translation:set', {
+      endpoint: root.querySelector('#set-tran-endpoint').value,
+      model: root.querySelector('#set-tran-model').value,
+      targetLang: root.querySelector('#set-tran-lang').value,
+      apiKey: root.querySelector('#set-tran-key').value,
+    });
+    const r = await api.invoke('translation:test');
+    box.innerHTML = `<div class="val" style="color:${r.ok ? '#4ade80' : 'var(--danger)'}">${r.ok ? '✓' : '✕'} ${esc(r.message)}</div>`;
   });
 
   // 备份与恢复

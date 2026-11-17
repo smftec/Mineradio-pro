@@ -10,6 +10,7 @@ const INVOKE_CHANNELS = new Set([
   'stats:record', 'stats:progress', 'stats:position', 'stats:all', 'stats:clearHistory', 'stats:reset',
   'config:get', 'config:set', 'app:setLoginItem', 'app:getLoginItem',
   'fav:toggle', 'shortcuts:setMediaKeys', 'backup:export', 'backup:import', 'backup:relaunch',
+  'translation:getConfig', 'translation:set', 'translation:test', 'translation:translate',
   'update:check', 'update:download', 'update:install', 'update:skip', 'update:openReleases',
 ]);
 

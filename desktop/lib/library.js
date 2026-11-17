@@ -8,6 +8,8 @@ import { getStore } from './store.js';
 import { readMetadata, initMetadata } from './metadata.js';
 
 export const AUDIO_EXT = new Set(['.mp3', '.m4a', '.m4b', '.aac', '.flac', '.wav', '.ogg', '.oga', '.opus', '.webm', '.weba', '.aif', '.aiff']);
+// 识别但暂不支持解码的格式(播放时给出明确提示而非静默忽略)
+export const UNSUPPORTED_EXT = new Set(['.ape', '.dsf', '.dff']);
 
 const tracks = new Map(); // id -> track
 let watcher = null;
@@ -103,11 +105,16 @@ export async function scanFolders(folders) {
   if (scanning) return { ok: false, reason: 'busy' };
   scanning = true;
   let added = 0;
+  let unsupported = 0;
   try {
     for (const folder of folders) {
       if (!existsSync(folder)) continue;
       const files = [];
       walk(folder, files);
+      // 统计暂不支持的格式(如 APE/DSD),扫描结束后提示
+      for (const f of files) {
+        if (UNSUPPORTED_EXT.has(extname(f).toLowerCase())) unsupported++;
+      }
       const total = files.length;
       let done = 0;
       // 并发 4 解析
@@ -133,7 +140,7 @@ export async function scanFolders(folders) {
     scanning = false;
   }
   send('library:changed', { tracks: allTracks() });
-  return { ok: true, added };
+  return { ok: true, added, unsupported };
 }
 
 // 启动:加载索引 + 同步缺失 + 恢复监控
@@ -237,7 +244,7 @@ export async function addFiles(paths) {
     if (await indexFile(p, { silent: true }) && isNew) added++;
   }
   send('library:changed', { tracks: allTracks() });
-  return { ok: true, added };
+  return { ok: true, added, unsupported };
 }
 
 export function allTracks() {

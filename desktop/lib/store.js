@@ -83,6 +83,7 @@ export function initStores() {
     mini: { onTop: true },
     favorites: [], // 收藏的曲目 id
     shortcuts: { mediaKeys: true },
+    translation: { enabled: false, endpoint: '', model: '', keyEncrypted: '', targetLang: 'zh-CN' },
     update: { autoCheck: true, customUrl: '', skippedVersion: '', mirror: 'auto', preferredMirror: '' },
   });
   stores.library = new Store('library.json', { tracks: {}, folders: [] });

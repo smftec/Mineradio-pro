@@ -47,6 +47,9 @@ const view = {
     }));
     this.unsubs.push(state.player.on('tick', ({ position }) => this.sync(position)));
 
+    // 翻译配置(决定 load 后是否拉取译文)
+    this._tranCfg = await api.invoke('translation:getConfig');
+    this.unsubs.push(api.on('player:state', () => { /* noop,保持生命周期 */ }));
     if (t) await this.load(t.id);
     else el.querySelector('#lv-lyrics').innerHTML = '<div class="empty" style="padding:60px"><img class="empty-art small" src="./assets/empty-music.png" alt="" draggable="false"><div class="empty-title">先播放一首歌吧</div></div>';
   },
@@ -85,6 +88,34 @@ const view = {
       });
     });
     this.sync(state_position());
+    // 歌词翻译(异步,不阻塞渲染)
+    this._maybeTranslate(trackId);
+  },
+
+  // 拉取歌词翻译并逐行插入 .lv-tran
+  async _maybeTranslate(trackId) {
+    const cfg = this._tranCfg;
+    if (!cfg?.enabled || !cfg.endpoint || !this.el) return;
+    const box = this.el.querySelector('#lv-lyrics');
+    if (!box) return;
+    const texts = this.lines.map((l) => l.text || '');
+    const pendingIdx = texts.map((t, i) => (t.trim() ? i : -1)).filter((i) => i >= 0);
+    if (!pendingIdx.length) return;
+    try {
+      const res = await api.invoke('translation:translate', texts, cfg.targetLang);
+      if (!this.el || this.trackId !== trackId || !res?.lines) return;
+      pendingIdx.forEach((i, j) => {
+        const t = res.lines[i];
+        const lineEl = box.querySelector(`.lv-line[data-i="${i}"]`);
+        if (!lineEl || !t) return;
+        const tran = document.createElement('div');
+        tran.className = 'lv-tran';
+        tran.textContent = t;
+        lineEl.after(tran);
+      });
+    } catch (e) {
+      console.error('[lyrics] translate failed:', e.message);
+    }
   },
 
   sync(pos) {

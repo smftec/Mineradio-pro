@@ -11,6 +11,7 @@ import * as stats from './stats.js';
 import { mediaUrl } from './protocol.js';
 import * as updater from './updater.js';
 import { applyMediaKeys } from './shortcuts.js';
+import * as translation from './translation.js';
 import * as backup from './backup.js';
 import {
   createMainWindow, createMiniWindow, closeMiniWindow,
@@ -186,6 +187,10 @@ export function registerIpc() {
   });
 
   // ---- 备份 / 恢复 ----
+  ipcMain.handle('translation:getConfig', () => translation.getConfig());
+  ipcMain.handle('translation:set', (_e, patch) => translation.setConfig(patch || {}));
+  ipcMain.handle('translation:test', () => translation.testTranslation());
+  ipcMain.handle('translation:translate', (_e, lines, targetLang) => translation.translateLines(lines || [], targetLang));
   ipcMain.handle('backup:export', async () => backup.exportBackup(windows.main));
   ipcMain.handle('backup:import', async () => backup.importBackup(windows.main));
   ipcMain.handle('backup:relaunch', () => backup.relaunchApp());
