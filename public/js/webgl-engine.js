@@ -168,7 +168,7 @@ export function attachEngine(engine) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       for (const e of engines) {
-        if (e.active) e.render(dt, themeRGB());
+        if (e.active && e.canvas.isConnected) e.render(dt, themeRGB());
       }
       raf = engines.size ? requestAnimationFrame(loop) : 0;
     };

@@ -898,6 +898,11 @@ function bindUpdateEvents() {
   };
 }
 
+// ---------------- 壁纸挂载状态(全局跟踪,推送节流用) ----------------
+function bindWallpaperState() {
+  api.on('wallpaper:state', (s2) => { state.wallpaperActive = !!s2.active; });
+}
+
 // ---------------- 启动 ----------------
 async function boot() {
   player.init();
@@ -906,6 +911,7 @@ async function boot() {
   bindLibraryEvents();
   bindPlayerCommands();
   bindUpdateEvents();
+  bindWallpaperState();
 
   // 加载配置
   state.config = await api.invoke('config:get');
@@ -949,9 +955,10 @@ async function boot() {
   player.startProgressSaver();
   player.startSessionSaver();
 
-  // 频谱数据推送(桌面壁纸联动,30fps 节流)
+  // 频谱数据推送(桌面壁纸联动,30fps 节流;仅在壁纸挂载时推送)
   let lastSpecPush = 0;
   setInterval(() => {
+    if (!state.wallpaperActive) return;
     const now = performance.now();
     if (now - lastSpecPush < 33) return;
     lastSpecPush = now;

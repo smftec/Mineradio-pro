@@ -128,8 +128,16 @@ export function registerIpc() {
   ipcMain.on('player:spec', (e, bins) => {
     broadcastExcept(e.sender, 'player:spec', bins);
   });
-  ipcMain.handle('wallpaper:mount', (_e, mode) => mountWallpaper(mode));
-  ipcMain.handle('wallpaper:unmount', () => unmountWallpaper());
+  ipcMain.handle('wallpaper:mount', (_e, mode) => {
+    const r = mountWallpaper(mode);
+    broadcast('wallpaper:state', { active: isMounted() });
+    return r;
+  });
+  ipcMain.handle('wallpaper:unmount', () => {
+    const r = unmountWallpaper();
+    broadcast('wallpaper:state', { active: false });
+    return r;
+  });
   ipcMain.handle('wallpaper:isMounted', () => isMounted());
   ipcMain.handle('wallpaper:diag', () => diagWindows());
   ipcMain.on('player:command', (e, cmd, arg) => {

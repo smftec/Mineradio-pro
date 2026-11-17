@@ -19,7 +19,7 @@ const ON_CHANNELS = new Set([
   'library:scan-progress', 'library:changed', 'library:updated', 'library:removed',
   'win:maximized',
   'update:event', 'dl:lockChanged', 'dl:configChanged',
-  'player:state', 'player:tick', 'player:command', 'mini:collapsed', 'player:spec', 'wallpaper:config',
+  'player:state', 'player:tick', 'player:command', 'mini:collapsed', 'player:spec', 'wallpaper:config', 'wallpaper:state',
 ]);
 
 contextBridge.exposeInMainWorld('mpro', {
