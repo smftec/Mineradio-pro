@@ -310,6 +310,7 @@ function bindChrome() {
     if (e.key === 'Escape') {
       const menuOpen = !$('ctx-menu').classList.contains('hidden');
       if (menuOpen) { $('ctx-menu').classList.add('hidden'); return; }
+      if (cmdkEl) { closeCmdK(); return; }
       if (tag === 'INPUT') {
         search.value = '';
         search.dispatchEvent(new Event('input'));

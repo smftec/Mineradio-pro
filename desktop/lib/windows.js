@@ -37,6 +37,15 @@ function forwardConsole(win) {
       console.error('[preload-error]', path, err?.message);
     });
   }
+  // 渲染进程崩溃自动恢复(非正常退出时重载)
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[renderer-gone]', details.reason);
+    if (details.reason !== 'clean-exit') {
+      setTimeout(() => {
+        if (!win.isDestroyed()) win.webContents.reload();
+      }, 800);
+    }
+  });
 }
 
 export function createMainWindow() {
