@@ -219,8 +219,27 @@ function viewGroupDetail(root, state, kind, value) {
   metaBits.push(sorted.length + ' 首');
   if (totalSec > 0) metaBits.push('总时长 ' + fmtTime(totalSec));
   const heroLabel = { artist: '艺术家', album: '专辑', genre: '流派', year: '年代' }[kind] || '';
+  // 艺术家详情:专辑分区(信息架构对标原版)
+  const albumSection = kind === 'artist' ? (() => {
+    const seen = new Map();
+    for (const t of sorted) {
+      const key = t.album || '未知专辑';
+      if (!seen.has(key)) seen.set(key, t);
+    }
+    const albums = [...seen.entries()];
+    if (albums.length < 2) return ''; // 单专辑不需要分区
+    return `<div class="dh-albums-head">专辑 <span class="count">${albums.length}</span></div>
+      <div class="grid">${albums.map(([name, t]) => {
+        const attr = `data-nav="albums" data-value="${esc(name)}"`;
+        return groupCard(name, `${sorted.filter((x) => (x.album || '未知专辑') === name).length} 首`,
+          [t], 'albums');
+      }).join('')}</div>
+      <div class="dh-albums-head songs">歌曲 <span class="count">${sorted.length}</span></div>`;
+  })() : '';
   root.innerHTML = `<button class="back-link" data-nav="${backView}">← 返回${heroLabel}</button>
     <div class="detail-hero">
+      <div class="dh-blur" style="background-image:url('${withArt ? coverUrl(withArt) : ''}')"></div>
+      <div class="dh-veil"></div>
       <div class="dh-art ${withArt ? '' : phClass(value)}">${withArt
         ? `<img src="${coverUrl(withArt)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'dh-art-fallback',textContent:'♪'}))">`
         : esc((value || '♪')[0].toUpperCase())}</div>
@@ -234,6 +253,7 @@ function viewGroupDetail(root, state, kind, value) {
         </div>
       </div>
     </div>
+    ${albumSection}
     ${trackTable(sorted, state.playingId)}`;
   bindTable(root, state, sorted);
   setupIncrementalList(root, state, sorted);
@@ -241,6 +261,13 @@ function viewGroupDetail(root, state, kind, value) {
   root.querySelector('#btn-play-all')?.addEventListener('click', () => state.playAll(sorted));
   root.querySelector('#btn-shuffle-all')?.addEventListener('click', () => {
     if (sorted.length) state.playFromList(sorted, Math.floor(Math.random() * sorted.length));
+  });
+  // 艺术家页专辑卡导航(bindCards 的通用绑定无法覆盖动态插入,此处单独绑)
+  root.querySelectorAll('.dh-albums-head + .grid [data-nav]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.card-play')) return;
+      state.navigate(el.dataset.nav, { value: el.dataset.value });
+    });
   });
 }
 

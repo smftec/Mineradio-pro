@@ -895,7 +895,25 @@ body.desktop-shell.folia-interface-active #folia-interface { top: 44px !importan
 .lv-toolbar { position: absolute; top: 18px; right: 22px; z-index: 3; display: flex; gap: 8px; }
 .lv-toolbar .btn { font-size: 12.5px; padding: 7px 14px; }
 
-/* 详情 hero 头部(专辑/艺术家/流派/年代) */
+/* 详情 hero 头部(专辑/艺术家/流派/年代)— 沉浸式模糊背景 */
+.detail-hero { position: relative; overflow: hidden; }
+.dh-blur {
+  position: absolute; inset: -60px; z-index: 0;
+  background-size: cover; background-position: center 30%;
+  filter: blur(70px) saturate(1.5) brightness(.5);
+  opacity: .6;
+}
+.dh-veil { position: absolute; inset: 0; z-index: 1; background: rgba(8, 10, 18, .38); }
+[data-theme="light"] .dh-veil { background: rgba(244, 245, 250, .5); }
+.detail-hero .dh-art, .detail-hero .dh-meta { position: relative; z-index: 2; }
+.dh-albums-head {
+  font-size: 15px; font-weight: 700; margin: 26px 0 14px;
+  color: var(--text);
+}
+.dh-albums-head .count { color: var(--faint); font-size: 12.5px; font-weight: 500; margin-left: 8px; }
+.dh-albums-head.songs { margin-top: 30px; }
+
+/* 唱片墙(CSS 3D 封面墙) */
 .detail-hero {
   display: flex; gap: 28px; align-items: flex-end;
   padding: 26px 28px; margin-bottom: 22px;
