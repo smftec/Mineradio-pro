@@ -151,6 +151,16 @@ export function renderSettings(root, state) {
         <input type="checkbox" class="switch" id="set-media-keys" ${cfg.shortcuts?.mediaKeys !== false ? 'checked' : ''}>
         <span class="val">键盘媒体键(播放/暂停、上一首/下一首)在任意应用界面均可控制播放</span>
       </div>
+      <div class="set-row"><label>睡眠定时器</label>
+        <select id="set-sleep-timer">
+          <option value="0">关闭</option>
+          <option value="15">15 分钟</option>
+          <option value="30">30 分钟</option>
+          <option value="60">60 分钟</option>
+          <option value="90">90 分钟</option>
+        </select>
+        <span class="val" id="sleep-timer-status">到时后渐出暂停播放</span>
+      </div>
     </div>
 
     <div class="set-group" id="wallpaper-group">
@@ -483,6 +493,31 @@ async function bindSettings(root, state) {
     }
   });
   root.querySelector('#btn-we-open').addEventListener('click', () => api.invoke('we:openProjects'));
+
+  // 睡眠定时器
+  const sleepSel = root.querySelector('#set-sleep-timer');
+  const sleepStatus = root.querySelector('#sleep-timer-status');
+  api.invoke('config:get').then((c) => {
+    const m = c.sleepTimer?.minutes || 0;
+    sleepSel.value = String(m);
+    if (c.sleepTimer?.endsAt && c.sleepTimer.endsAt > Date.now()) {
+      sleepStatus.textContent = `定时器运行中,约 ${Math.ceil((c.sleepTimer.endsAt - Date.now()) / 60000)} 分钟后暂停`;
+    }
+  });
+  sleepSel.addEventListener('change', async (e) => {
+    const minutes = parseInt(e.target.value, 10);
+    await api.invoke('config:set', { sleepTimer: { minutes } });
+    if (minutes > 0) {
+      const endsAt = Date.now() + minutes * 60000;
+      await api.invoke('config:set', { sleepTimer: { minutes, endsAt } });
+      window.__startSleepTimer?.(minutes);
+      sleepStatus.textContent = `定时器已启动,${minutes} 分钟后渐出暂停`;
+    } else {
+      window.__stopSleepTimer?.();
+      sleepStatus.textContent = '定时器已关闭';
+    }
+    toast(minutes > 0 ? `睡眠定时器已启动(${minutes} 分钟)` : '睡眠定时器已关闭');
+  });
 
   // 全局媒体键
   root.querySelector('#set-media-keys').addEventListener('change', async (e) => {

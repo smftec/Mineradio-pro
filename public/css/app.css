@@ -778,6 +778,10 @@ input[type="range"].slider { accent-color: var(--accent); min-width: 180px; curs
 .ctx-item:hover .ico { color: var(--accent2); }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 8px; }
 
+/* 播放速度按钮 */
+.rate-btn { min-width: 38px; }
+.rate-btn span { font-variant-numeric: tabular-nums; }
+
 /* Folia 模式细节:标题栏常驻(可随时切回/最小化/关闭) */
 #btn-folia-switch {
   width: auto; min-width: 40px; padding: 0 13px;

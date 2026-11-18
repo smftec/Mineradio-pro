@@ -233,6 +233,21 @@ function bindPlaybar() {
     else toast('先播放一首歌,再打开歌词视图');
   });
   $('pb-mini').addEventListener('click', () => api.send('mini:open'));
+  // 播放速度循环(1.0 → 1.25 → 1.5 → 2.0 → 0.75 → 1.0)
+  const rates = [1, 1.25, 1.5, 2, 0.75];
+  let rateIdx = 0;
+  $('pb-rate').addEventListener('click', () => {
+    rateIdx = (rateIdx + 1) % rates.length;
+    player.setRate(rates[rateIdx]);
+    $('pb-rate-text').textContent = rates[rateIdx] + 'x';
+    toast('播放速度 ' + rates[rateIdx] + 'x', 1500);
+  });
+  // 恢复上次速度
+  const savedRate = window.__state?.config?.playbackRate;
+  if (savedRate && savedRate !== 1) {
+    player.setRate(savedRate);
+    $('pb-rate-text').textContent = savedRate + 'x';
+  }
   // 喜欢:真实存储(config.favorites)
   $('pb-fav').addEventListener('click', async (e) => {
     if (!player.current) { toast('先播放一首歌,再点喜欢'); return; }
@@ -740,7 +755,24 @@ state.showTrackMenu = function (e, track, playlistId) {
       },
     });
   }
-  items.push({ sep: true }, { label: '打开文件位置', icon: 'folder', act: () => api.invoke('lib:reveal', track.path) });
+  items.push({ sep: true },
+    { label: '设置专辑封面…', icon: 'folder', act: () => {
+      api.invoke('lib:pickCover').then((srcPath) => {
+        if (!srcPath) return;
+        const albumKey = track.album || '未知专辑';
+        api.invoke('cover:custom', albumKey, srcPath).then((r) => {
+          if (r.ok) {
+            toast(`封面已设置(按专辑「${albumKey}」生效)`, 5000, 'success');
+            // 更新所有同专辑曲目的封面引用
+            for (const t of st.tracks) {
+              if ((t.album || '未知专辑') === albumKey) t.cover = r.path;
+            }
+            state.render();
+          } else if (r.reason) toast('设置失败:' + r.reason, 4000);
+        });
+      });
+    } },
+    { label: '打开文件位置', icon: 'folder', act: () => api.invoke('lib:reveal', track.path) });
 
   menu.innerHTML = items.map((it, i) =>
     it.sep ? '<div class="ctx-sep"></div>' : `<div class="ctx-item" data-i="${i}"><svg viewBox="0 0 24 24" class="ico">${MENU_ICONS[it.icon] || ''}</svg>${esc(it.label)}</div>`).join('');
@@ -970,6 +1002,9 @@ async function boot() {
     player, state,
     addFolderFlow: state.addFolderFlow,
   });
+  // 睡眠定时器全局入口(设置页调用)
+  window.__startSleepTimer = (minutes) => player.startSleepTimer(minutes, () => toast('睡眠定时器时间到,播放已暂停', 5000));
+  window.__stopSleepTimer = () => player.stopSleepTimer();
   // Folia 偏好:恢复上次界面选择
   try {
     const lastMode = localStorage.getItem('mineradio-player-interface-v1');
@@ -996,6 +1031,7 @@ async function boot() {
     api.invoke('config:set', {
       volume: player.volume, crossfade: player.crossfade,
       repeat: player.repeat, shuffle: player.shuffle,
+      playbackRate: player.getRate(),
     });
   }, 8000);
 }

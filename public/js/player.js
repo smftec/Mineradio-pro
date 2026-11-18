@@ -29,6 +29,8 @@ export const player = {
   _playStartPos: 0,   // 本次播放起始秒(统计累计时长)
   _settled: false,    // 当前曲目是否已结算(防止 ended + 切歌双计)
   _sinkId: 'default',
+  _rate: 1,
+  _sleepTimer: null,
   _errorSkips: 0,     // 连续错误跳过计数(防死循环)
 
   on(evt, cb) {
@@ -139,6 +141,44 @@ export const player = {
     this._els.A.volume = this.volume;
     this._els.B.volume = this.volume;
   },
+
+  // 播放速度
+  setRate(rate) {
+    this._rate = Math.max(0.25, Math.min(4, rate || 1));
+    for (const el of Object.values(this._els)) { if (el) el.playbackRate = this._rate; }
+  },
+  getRate() { return this._rate || 1; },
+
+  // 睡眠定时器:倒计时结束渐出暂停
+  startSleepTimer(minutes, onEnd) {
+    this.stopSleepTimer();
+    if (!minutes || minutes <= 0) return;
+    const ms = minutes * 60 * 1000;
+    const start = performance.now();
+    this._sleepTimer = setInterval(() => {
+      if (performance.now() - start >= ms) {
+        this.stopSleepTimer();
+        const el = this._els[this._active];
+        if (el && !el.paused) {
+          const steps = 20; let step = 0;
+          const fade = setInterval(() => {
+            step++;
+            const t = 1 - step / steps;
+            this._els.A.volume = this.volume * t;
+            this._els.B.volume = this.volume * t;
+            if (step >= steps) {
+              clearInterval(fade);
+              el.pause();
+              this._els.A.volume = this.volume;
+              this._els.B.volume = this.volume;
+              if (onEnd) onEnd();
+            }
+          }, 150);
+        } else if (onEnd) onEnd();
+      }
+    }, 500);
+  },
+  stopSleepTimer() { clearInterval(this._sleepTimer); this._sleepTimer = null; },
 
   // 音频流(视频导出录制用;tap 不影响扬声器输出)
   getAudioStream() {

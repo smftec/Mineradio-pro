@@ -89,6 +89,9 @@ export function initStores() {
     mini: { onTop: true },
     favorites: [], // 收藏的曲目 id
     shortcuts: { mediaKeys: true },
+    sleepTimer: { minutes: 0 },
+    playbackRate: 1,
+    customCovers: {},
     translation: { enabled: false, endpoint: '', model: '', keyEncrypted: '', targetLang: 'zh-CN' },
     update: { autoCheck: true, customUrl: '', skippedVersion: '', mirror: 'auto', preferredMirror: '' },
   });

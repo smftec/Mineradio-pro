@@ -245,6 +245,36 @@ export function registerIpc() {
       return { ok: false, reason: e.message };
     }
   });
+  ipcMain.handle('lib:pickCover', async () => {
+    const r = await dialog.showOpenDialog(windows.main, {
+      title: '选择封面图片',
+      filters: [{ name: '图片', extensions: ['jpg', 'jpeg', 'png', 'webp'] }],
+      properties: ['openFile'],
+    });
+    return r.canceled ? null : r.filePaths[0];
+  });
+  ipcMain.handle('cover:custom', async (_e, albumKey, srcPath) => {
+    try {
+      const { copyFileSync } = await import('node:fs');
+      const { getCoverDir } = await import('./metadata.js');
+      const dir = getCoverDir();
+      if (!dir) return { ok: false, reason: 'cover dir not ready' };
+      const hash = createHash('md5').update('custom-' + albumKey).digest('hex').slice(0, 16);
+      const ext = srcPath.slice(srcPath.lastIndexOf('.')).toLowerCase() || '.jpg';
+      const dest = join(dir, 'custom_' + hash + ext);
+      copyFileSync(srcPath, dest);
+      const cfg = getStore('config').data;
+      cfg.customCovers ||= {};
+      cfg.customCovers[albumKey] = dest;
+      getStore('config').scheduleSave();
+      return { ok: true, path: dest };
+    } catch (e) { return { ok: false, reason: e.message }; }
+  });
+  ipcMain.handle('cover:customRemove', (_e, albumKey) => {
+    const cfg = getStore('config').data;
+    if (cfg.customCovers) { delete cfg.customCovers[albumKey]; getStore('config').scheduleSave(); }
+    return { ok: true };
+  });
   ipcMain.handle('app:checkFfmpeg', () => {
     resetFfmpegCache();
     const path = detectFfmpeg();

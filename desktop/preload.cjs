@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const INVOKE_CHANNELS = new Set([
   'app:info',
   'lib:pickFolder', 'lib:pickFiles', 'lib:addFolder', 'lib:addFiles',
-  'lib:getAll', 'lib:getFolders', 'lib:removeFolder', 'lib:rescan', 'lib:isScanning', 'lib:reveal',
+  'lib:getAll', 'lib:getFolders', 'lib:removeFolder', 'lib:rescan', 'lib:isScanning', 'lib:reveal', 'lib:pickCover',
   'lyrics:get', 'media:url', 'player:getState',
   'pl:list', 'pl:create', 'pl:rename', 'pl:remove', 'pl:addTracks', 'pl:removeTrack', 'pl:reorder',
   'stats:record', 'stats:progress', 'stats:position', 'stats:all', 'stats:clearHistory', 'stats:reset',
@@ -12,7 +12,7 @@ const INVOKE_CHANNELS = new Set([
   'fav:toggle', 'shortcuts:setMediaKeys', 'backup:export', 'backup:import', 'backup:relaunch',
   'wallpaper:mount', 'wallpaper:unmount', 'wallpaper:isMounted', 'wallpaper:diag',
   'we:detect', 'we:export', 'we:openProjects', 'preset:save', 'preset:load',
-  'translation:getConfig', 'translation:set', 'translation:test', 'translation:translate', 'app:checkFfmpeg', 'export:saveVideo',
+  'translation:getConfig', 'translation:set', 'translation:test', 'translation:translate', 'app:checkFfmpeg', 'export:saveVideo', 'cover:custom', 'cover:customRemove',
   'update:check', 'update:download', 'update:install', 'update:skip', 'update:openReleases',
 ]);
 
