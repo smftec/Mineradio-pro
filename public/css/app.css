@@ -947,11 +947,11 @@ body.desktop-shell.folia-interface-active #folia-interface { top: 44px !importan
 }
 .q-now-label.next { color: var(--faint); margin-top: 10px; }
 
-/* 唱片墙(CSS 3D 封面墙) */
-.wall-stage { perspective: 1400px; perspective-origin: 50% 30%; }
+/* 唱片墙(CSS 3D 封面墙)— 顶部锚定:首行贴顶,向后微微延伸,避免长墙面被透视压缩成空白 */
+.wall-stage { perspective: 1600px; perspective-origin: 50% 0%; }
 .wall-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 26px;
-  transform: rotateX(12deg) scale(.96); transform-style: preserve-3d;
+  transform: rotateX(6deg) scale(.98); transform-origin: 50% 0; transform-style: preserve-3d;
 }
 .wall-card {
   position: relative; border-radius: 16px; overflow: hidden; cursor: pointer;

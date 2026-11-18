@@ -22,6 +22,12 @@ export function fmtTime(sec) {
   if (!isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
+  // 超过 100 分钟(总时长统计场景):显示小时/分钟,避免 5350:31 这类可读性差的输出
+  if (m >= 100) {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    return h > 0 ? `${h} 小时 ${mm} 分` : `${m} 分钟`;
+  }
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 

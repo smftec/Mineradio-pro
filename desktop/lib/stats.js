@@ -16,8 +16,10 @@ export function recordPlay(trackId, { seconds = 0, completed = false } = {}) {
 
 export function updateProgress(trackId, position) {
   const store = getStore('stats');
-  const t = store.data.tracks[trackId];
-  if (t) { t.lastPosition = Math.floor(position); store.scheduleSave(); }
+  // 无条目也创建:首次播放(尚未切歌/播完)也要能断点续播
+  const t = (store.data.tracks[trackId] ||= { plays: 0, seconds: 0, completed: 0, lastPlayed: 0 });
+  t.lastPosition = Math.floor(position);
+  store.scheduleSave();
 }
 
 // 查询单曲上次播放位置(断点续播,避免全量传输)

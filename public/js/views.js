@@ -86,8 +86,14 @@ function appendBatch(root, tbody, sentinel) {
 // 行级绑定(增量追加用)
 function bindTrackRow(tr, tracks, playlistId) { /* 由 bindTable 的委托实现覆盖,此处保留占位 */ }
 
+// 占位首字符:跳过书名号/引号/括号等前导标点,取首个字母/汉字
+function initialOf(name) {
+  const m = String(name || '').match(/[0-9A-Za-z\u3040-\u30ff\u3400-\u9fff\uff41-\uff5a\uff21-\uff3a]/);
+  return (m ? m[0] : (name || '♪')[0]).toUpperCase();
+}
+
 function card(art, isPlaceholder, name, sub, onclickAttr, withPlay) {
-  const ph = esc((name || '♪')[0].toUpperCase());
+  const ph = esc(initialOf(name));
   const phc = phClass(name);
   const artEl = isPlaceholder
     ? `<div class="card-art placeholder ${phc}">${ph}</div>`
@@ -171,13 +177,20 @@ function renderEmptyLibrary(root, state) {
   root.querySelector('#empty-add-files')?.addEventListener('click', () => state.addFilesFlow());
 }
 
+// 流派归一:标签器常写入"未定义/Unknown"等占位值,统一并入"未知流派"
+const GENRE_PLACEHOLDER = /^\s*(未定义|未知|无|unknown|undefined|unset|other|其他|none|genre)\s*$/i;
+function genreKey(t) {
+  const g = String(t.genre || '').trim();
+  return !g || GENRE_PLACEHOLDER.test(g) ? '未知流派' : g;
+}
+
 function viewGroups(root, state, kind, title) {
   const groups = new Map();
   for (const t of state.tracks) {
     let key;
     if (kind === 'artist') key = t.albumArtist || t.artist || '未知艺术家';
     else if (kind === 'album') key = t.album || '未知专辑';
-    else if (kind === 'genre') key = t.genre || '未知流派';
+    else if (kind === 'genre') key = genreKey(t);
     else key = t.year ? String(t.year) : '未知年代';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(t);
@@ -200,7 +213,7 @@ function viewGroupDetail(root, state, kind, value) {
   const tracks = state.tracks.filter((t) => {
     if (kind === 'artist') return (t.albumArtist || t.artist || '未知艺术家') === value;
     if (kind === 'album') return (t.album || '未知专辑') === value;
-    if (kind === 'genre') return (t.genre || '未知流派') === value;
+    if (kind === 'genre') return genreKey(t) === value;
     return (t.year ? String(t.year) : '未知年代') === value;
   });
   const sorted = kind === 'album' ? sortDefault(tracks) : [...tracks].sort((a, b) => (a.album || '').localeCompare(b.album || '', 'zh') || (a.trackNo || 0) - (b.trackNo || 0));
@@ -211,7 +224,10 @@ function viewGroupDetail(root, state, kind, value) {
   const metaBits = [];
   if (kind !== 'artist') {
     const artists = [...new Set(sorted.map((t) => t.albumArtist || t.artist).filter(Boolean))];
-    metaBits.push(artists.join(' / '));
+    // 大合辑可能有数百位艺术家:只展示前 4 位,其余计数
+    metaBits.push(artists.length > 4
+      ? `${artists.slice(0, 4).join(' / ')} 等 ${artists.length} 位艺术家`
+      : artists.join(' / '));
   } else {
     const albums = [...new Set(sorted.map((t) => t.album).filter(Boolean))];
     if (albums.length > 1) metaBits.push(albums.length + ' 张专辑');
@@ -242,7 +258,7 @@ function viewGroupDetail(root, state, kind, value) {
       <div class="dh-veil"></div>
       <div class="dh-art ${withArt ? '' : phClass(value)}">${withArt
         ? `<img src="${coverUrl(withArt)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'dh-art-fallback',textContent:'♪'}))">`
-        : esc((value || '♪')[0].toUpperCase())}</div>
+        : esc(initialOf(value))}</div>
       <div class="dh-meta">
         <div class="dh-kind">${heroLabel}</div>
         <h1 class="dh-title">${esc(value)}</h1>
@@ -433,7 +449,7 @@ function bindCards(root, state) {
       const tracks = state.tracks.filter((t) => {
         if (kind === 'artist') return (t.albumArtist || t.artist || '未知艺术家') === value;
         if (kind === 'album') return (t.album || '未知专辑') === value;
-        if (kind === 'genre') return (t.genre || '未知流派') === value;
+        if (kind === 'genre') return genreKey(t) === value;
         return (t.year ? String(t.year) : '未知年代') === value;
       });
       state.playAll(sortDefault(tracks));
