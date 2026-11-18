@@ -765,7 +765,7 @@ state.showTrackMenu = function (e, track, playlistId) {
             toast(`封面已设置(按专辑「${albumKey}」生效)`, 5000, 'success');
             // 更新所有同专辑曲目的封面引用
             for (const t of st.tracks) {
-              if ((t.album || '未知专辑') === albumKey) t.cover = r.path;
+              if ((t.album || '未知专辑') === albumKey) { t.cover = r.path; t.thumb = ''; }
             }
             state.render();
           } else if (r.reason) toast('设置失败:' + r.reason, 4000);
@@ -1005,6 +1005,14 @@ async function boot() {
   // 睡眠定时器全局入口(设置页调用)
   window.__startSleepTimer = (minutes) => player.startSleepTimer(minutes, () => toast('睡眠定时器时间到,播放已暂停', 5000));
   window.__stopSleepTimer = () => player.stopSleepTimer();
+  // 跨重启恢复:config.sleepTimer.endsAt 仍在未来则续跑
+  const savedSleep = st.config.sleepTimer;
+  if (savedSleep?.endsAt && savedSleep.endsAt > Date.now() && savedSleep.minutes > 0) {
+    const remainMs = savedSleep.endsAt - Date.now();
+    setTimeout(() => {
+      player.startSleepTimer(0.01, () => toast('睡眠定时器时间到,播放已暂停', 5000));
+    }, Math.max(0, remainMs - 15000)); // 提前 15 秒渐出
+  }
   // Folia 偏好:恢复上次界面选择
   try {
     const lastMode = localStorage.getItem('mineradio-player-interface-v1');

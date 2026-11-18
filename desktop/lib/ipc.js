@@ -1,7 +1,8 @@
 // IPC 路由:所有 invoke/send 通道集中注册
 import electron from 'electron';
 const { ipcMain, dialog, app, shell, BrowserWindow } = electron;
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { getStore, stores } from './store.js';
 import * as library from './library.js';
@@ -15,7 +16,6 @@ import { applyMediaKeys } from './shortcuts.js';
 import * as translation from './translation.js';
 import { detectFfmpeg, resetFfmpegCache } from './audio/transcode.js';
 import * as weBridge from './we-bridge.js';
-import { writeFileSync } from 'node:fs';
 import * as backup from './backup.js';
 import {
   createMainWindow, createMiniWindow, closeMiniWindow,
@@ -267,6 +267,10 @@ export function registerIpc() {
       cfg.customCovers ||= {};
       cfg.customCovers[albumKey] = dest;
       getStore('config').scheduleSave();
+      // 同步更新内存中的曲目 cover 字段(同专辑全部)
+      for (const [, t] of library.allTracks().entries()) {
+        if ((t.album || '未知专辑') === albumKey) t.cover = dest;
+      }
       return { ok: true, path: dest };
     } catch (e) { return { ok: false, reason: e.message }; }
   });

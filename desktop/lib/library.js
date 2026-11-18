@@ -64,6 +64,10 @@ async function indexFile(path, { silent = false } = {}) {
     const track = toTrack(path, meta);
     const existing = tracks.get(track.id);
     if (existing) track.addedAt = existing.addedAt;
+    // 自定义封面覆盖
+    const ck = getStore('config').data;
+    const cc = ck.customCovers || {};
+    if (cc[track.album || '未知专辑']) track.cover = cc[track.album || '未知专辑'];
     tracks.set(track.id, track);
     getStore('library').data.tracks[track.id] = track;
     getStore('library').scheduleSave();
@@ -152,9 +156,17 @@ export async function scanFolders(folders) {
 export async function initLibrary() {
   initMetadata();
   const store = getStore('library');
+  const cfg = getStore('config');
+  const customCovers = cfg.data.customCovers || {};
   for (const [id, t] of Object.entries(store.data.tracks || {})) {
-    if (existsSync(t.path)) tracks.set(id, t);
-    else delete store.data.tracks[id];
+    if (existsSync(t.path)) {
+      // 自定义封面覆盖(按专辑键)
+      const ck = t.album || '未知专辑';
+      if (customCovers[ck]) t.cover = customCovers[ck];
+      tracks.set(id, t);
+    } else {
+      delete store.data.tracks[id];
+    }
   }
   store.scheduleSave();
 

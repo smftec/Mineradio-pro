@@ -28,7 +28,7 @@ if (!page) {
 
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 const result = await new Promise((resolve, reject) => {
-  const timer = setTimeout(() => reject(new Error('timeout')), 15000);
+  const timer = setTimeout(() => reject(new Error('timeout')), 45000);
   ws.onopen = () => {
     ws.send(JSON.stringify({
       id: 1,
