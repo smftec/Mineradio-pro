@@ -7,11 +7,16 @@ import { join } from 'node:path';
 function deepMerge(defaults, src) {
   if (!src || typeof src !== 'object') return structuredClone(defaults);
   const out = Array.isArray(defaults) ? [...src] : { ...defaults };
-  for (const k of Object.keys(defaults)) {
-    if (typeof defaults[k] === 'object' && defaults[k] !== null && !Array.isArray(defaults[k])) {
-      out[k] = deepMerge(defaults[k], src[k]);
-    } else if (src && k in src) {
-      out[k] = src[k];
+  // 键取并集:默认值里的空对象(如 library.tracks / stats.tracks)承载动态数据,不能丢
+  const keys = new Set([...Object.keys(defaults), ...Object.keys(src)]);
+  for (const k of keys) {
+    const d = defaults[k];
+    const s = src[k];
+    if (typeof d === 'object' && d !== null && !Array.isArray(d)
+      && typeof s === 'object' && s !== null && !Array.isArray(s)) {
+      out[k] = deepMerge(d, s);
+    } else if (k in src) {
+      out[k] = s;
     }
   }
   return out;

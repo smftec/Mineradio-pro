@@ -6,13 +6,17 @@ import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { isAllowedMediaPath } from './library.js';
 import { getCoverDir } from './metadata.js';
-import { transcodeToWav, isTranscodable } from './audio/transcode.js';
+import { transcodeToWav, isTranscodable, getTranscodeCacheDir } from './audio/transcode.js';
 
-// 路径白名单:封面缓存目录 / 曲库文件夹 / 已索引文件,其余一律拒绝
+// 路径白名单:封面缓存目录 / 转码缓存目录 / 曲库文件夹 / 已索引文件,其余一律拒绝
 function inAllowedScope(filePath) {
   const norm = filePath.toLowerCase().replace(/[\\/]+$/, '');
   const coverDir = (getCoverDir() || '').toLowerCase();
   if (coverDir && norm.startsWith(coverDir.toLowerCase() + '\\')) return true;
+  try {
+    const cacheDir = (getTranscodeCacheDir() || '').toLowerCase();
+    if (cacheDir && norm.startsWith(cacheDir + '\\')) return true;
+  } catch { /* app not ready */ }
   return isAllowedMediaPath(filePath);
 }
 

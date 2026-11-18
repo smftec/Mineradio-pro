@@ -42,6 +42,9 @@ function cacheDir() {
   return dir;
 }
 
+// 供协议白名单放行转码缓存 WAV
+export function getTranscodeCacheDir() { return cacheDir(); }
+
 function cachePath(filePath) {
   const hash = createHash('md5').update(filePath.toLowerCase()).digest('hex').slice(0, 16);
   return join(cacheDir(), hash + '.wav');

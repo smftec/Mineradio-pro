@@ -1006,12 +1006,12 @@ async function boot() {
   window.__startSleepTimer = (minutes) => player.startSleepTimer(minutes, () => toast('睡眠定时器时间到,播放已暂停', 5000));
   window.__stopSleepTimer = () => player.stopSleepTimer();
   // 跨重启恢复:config.sleepTimer.endsAt 仍在未来则续跑
-  const savedSleep = st.config.sleepTimer;
+  const savedSleep = state.config.sleepTimer;
   if (savedSleep?.endsAt && savedSleep.endsAt > Date.now() && savedSleep.minutes > 0) {
     const remainMs = savedSleep.endsAt - Date.now();
     setTimeout(() => {
       player.startSleepTimer(0.01, () => toast('睡眠定时器时间到,播放已暂停', 5000));
-    }, Math.max(0, remainMs - 15000)); // 提前 15 秒渐出
+    }, Math.max(0, remainMs - 15000));
   }
   // Folia 偏好:恢复上次界面选择
   try {
